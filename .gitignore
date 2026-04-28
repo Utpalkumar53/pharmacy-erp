@@ -1,0 +1,23 @@
+# Compiled class files
+target/
+*.class
+
+# Log files
+*.log
+
+# IntelliJ IDEA files
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+gen/
+
+# Maven Wrapper
+.mvn/
+mvnw
+mvnw.cmd
+
+# OS generated files
+.DS_Store
+Thumbs.db
