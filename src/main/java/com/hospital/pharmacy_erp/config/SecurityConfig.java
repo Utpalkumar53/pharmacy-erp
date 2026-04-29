@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "PHARMACIST")
                         .requestMatchers("/api/alerts/**").hasAnyRole("ADMIN", "PHARMACIST")
                         .requestMatchers("/api/customers/**").hasAnyRole("ADMIN", "PHARMACIST")
+                        .requestMatchers("/api/returns/**").hasAnyRole("ADMIN", "PHARMACIST")
 
                         // 5. CATCH-ALL
                         .anyRequest().authenticated())

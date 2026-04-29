@@ -27,6 +27,10 @@ public class Sale {
     private LocalDateTime saleDate;
     private String billedBy;
 
+    private boolean creditSale;
+    private double creditAmount;
+    private double creditTax;
+
     // NEW: Flag to allow selling from the safety stock
     private boolean emergencySale = false;
 }
