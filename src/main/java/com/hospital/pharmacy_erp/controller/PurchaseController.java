@@ -16,8 +16,8 @@ public class PurchaseController {
     @Autowired
     private PurchaseOrderService purchaseOrderService;
 
-   @PostMapping
-   private ResponseEntity<PurchaseOrder> createPurchaseOrder(@RequestBody PurchaseOrder purchaseOrder){
+   @PostMapping("/receive") // Added path to match the logic of receiving stock
+   public ResponseEntity<PurchaseOrder> createPurchaseOrder(@RequestBody PurchaseOrder purchaseOrder){
        PurchaseOrder purchaseOrders = purchaseOrderService.saveOrder(purchaseOrder);
        return new ResponseEntity<>(purchaseOrders, HttpStatus.CREATED);
    }

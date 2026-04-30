@@ -18,23 +18,31 @@ import java.time.LocalDate;
 public class Medicine {
     @Id
     private String id;
+
     @NotBlank(message = "Medicine name cannot be empty")
-    private String name;
+    private String name; // Note: Ensure your Service uses .getName() instead of .getMedicineName()
+
     private String batchNo;
+
     @Min(value = 0, message = "Stock cannot be negative")
     private int stockQuantity;
 
-    // NEW: Threshold for emergency reserve (Default 20)
     private int minStockLevel = 20;
 
     @DecimalMin(value = "0.1", message = "MRP must be greater than zero")
     private double mrp;
+
+    // NEW FIELD: This fixed the "Cannot resolve method setCostPrice" error
+    private double costPrice;
+
     private LocalDate expiryDate;
     private String category;
     private String supplierId;
     private String rackLocation;
+
     @NotBlank(message = "HSN Code is required for GST compliance")
     private String hsnCode;
+
     private double gstPercentage;
     private LocalDate addedDate;
 }

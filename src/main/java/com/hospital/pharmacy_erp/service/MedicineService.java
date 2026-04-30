@@ -16,7 +16,8 @@ public class MedicineService {
 
     @Autowired
     private MedicineRepository medicineRepository;
-
+    @Autowired
+    private AuditService auditService;
 //    @Autowired
 //    private AuditService auditService;
 
@@ -34,6 +35,21 @@ public class MedicineService {
         }
     }
 
+    public Medicine updateMedicine(String id, Medicine medicineDetails) {
+        // 1. Fetch the REAL existing record by the URL ID
+        Medicine existingMedicine = medicineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Medicine not found with ID: " + id));
+
+        // 2. ONLY update the fields provided in the request
+        // This preserves the ID, stockQuantity, and costPrice automatically
+        existingMedicine.setName(medicineDetails.getName());
+        existingMedicine.setExpiryDate(medicineDetails.getExpiryDate());
+        existingMedicine.setBatchNo(medicineDetails.getBatchNo());
+
+        // 3. Save the EXISTING object (which has the correct ID)
+        return medicineRepository.save(existingMedicine);
+    }
+
     public List<Medicine> addBulkMedicines(List<Medicine> medicines) {
         // Optional: Add logic here to check for duplicates by Name + BatchNo
         return medicineRepository.saveAll(medicines);
@@ -45,14 +61,23 @@ public class MedicineService {
     }
 
     // Delete logic
-    public boolean deleteMedicine(String id) {
-        if (medicineRepository.existsById(id)) {
-            medicineRepository.deleteById(id);
-            String currentUser = SecurityContextHolder.getContext().getAuthentication().getName();
-//            auditService.log(currentUser, "DELETE_MEDICINE", "Deleted medicine with Id : " + id);
-            return true;
+    public void deleteMedicine(String id) {
+        Medicine medicine = medicineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Medicine not found with ID: " + id));
+
+        medicineRepository.delete(medicine);
+
+        // Get current user from Security Context
+        String currentUser = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+
+        // HANDLE ERROR: Only call auditService if it is NOT NULL
+        if (auditService != null) {
+            auditService.log(currentUser, "DELETE_MEDICINE", "Deleted medicine: " + medicine.getName());
+        } else {
+            // Fallback: Log to console so you still have a record during development
+            System.out.println("AUDIT LOG (Local): User [" + currentUser + "] deleted " + medicine.getName());
         }
-        return false;
     }
 
     // DSA Practice: Using Streams to find low stock

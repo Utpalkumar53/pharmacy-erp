@@ -1,11 +1,7 @@
 package com.hospital.pharmacy_erp.service;
 
-import com.hospital.pharmacy_erp.entity.Expense;
-import com.hospital.pharmacy_erp.entity.PurchaseOrder;
-import com.hospital.pharmacy_erp.entity.Sale;
-import com.hospital.pharmacy_erp.repository.ExpenseRepository;
-import com.hospital.pharmacy_erp.repository.PurchaseOrderRepository;
-import com.hospital.pharmacy_erp.repository.SaleRepository;
+import com.hospital.pharmacy_erp.entity.*;
+import com.hospital.pharmacy_erp.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,50 +13,44 @@ import java.util.List;
 @Service
 public class FinanceService {
 
-    @Autowired
-    private SaleRepository saleRepository;
-
-    @Autowired
-    private PurchaseOrderRepository purchaseOrderRepository;
-
-    @Autowired
-    private ExpenseRepository expenseRepository;
+    @Autowired private SaleRepository saleRepository;
+    @Autowired private PurchaseOrderRepository purchaseOrderRepository;
+    @Autowired private ExpenseRepository expenseRepository;
 
     public double getDailyCashPosition(LocalDate date) {
-        // Define the start and end of the day
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        // 1. Get all sales for today and sum them up
-        List<Sale> dailySales = saleRepository.findAll().stream()
+        // 1. Sales today
+        double totalSales = saleRepository.findAll().stream()
                 .filter(s -> s.getSaleDate() != null &&
                         s.getSaleDate().isAfter(startOfDay) &&
                         s.getSaleDate().isBefore(endOfDay))
-                .toList();
-        double totalSales = dailySales.stream().mapToDouble(Sale::getSubTotalAmount).sum();
+                .mapToDouble(Sale::getTotalAmount).sum(); // Using TotalAmount (incl. tax)
 
-        // 2. Get all purchases for today and sum them up
-        // Note: Check your PurchaseOrder entity for the date field name (purchaseDate or orderDate)
+        // 2. Purchases today (Fixed the variable name error here)
         List<PurchaseOrder> dailyPurchases = purchaseOrderRepository.findAll().stream()
                 .filter(p -> p.getPurchaseDate() != null &&
-                        p.getPurchaseDate().
-                        isAfter(startOfDay) &&
-                        p.getPurchaseDate()
-                        .isBefore(endOfDay))
+                        p.getPurchaseDate().isAfter(startOfDay) &&
+                        p.getPurchaseDate().isBefore(endOfDay))
                 .toList();
-        double totalPurchases = dailyPurchases.stream()
-                .mapToDouble(p -> p.getQuantityPurchased() * p.getUnitCostPrice())
-                .sum();
 
-        //3 Tota Expense of day mislenious
+        // FIXED: Changed monthlyPurchases to dailyPurchases
+        double totalPurchases = dailyPurchases.stream()
+                .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
+
+        // 3. Expenses today
         double totalExpenses = expenseRepository.findAll().stream()
                 .filter(e -> e.getExpenseDate() != null &&
-                                    e.getExpenseDate() != null &&
-                                    e.getExpenseDate().isAfter(startOfDay) &&
-                                    e.getExpenseDate().isBefore(endOfDay))
+                        e.getExpenseDate().isAfter(startOfDay) &&
+                        e.getExpenseDate().isBefore(endOfDay))
                 .mapToDouble(Expense::getAmount).sum();
 
-        // Ledger Formula: Sales - (Purchases + Expenses)
-        return totalSales - (totalPurchases + totalExpenses);
+        // Ledger: What came in - What went out
+        return round(totalSales - (totalPurchases + totalExpenses));
+    }
+
+    private double round(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }

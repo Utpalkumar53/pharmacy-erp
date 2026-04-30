@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -39,8 +41,8 @@ public class MedicineController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Medicine> updateMedicine(@RequestBody Medicine medicine) {
-        Medicine updateed = medicineService.saveMedicine(medicine);
+    public ResponseEntity<Medicine> updateMedicine(@PathVariable String id, @RequestBody Medicine details) {
+        Medicine updateed = medicineService.updateMedicine(id, details);
         return new ResponseEntity<>(updateed, HttpStatus.OK);
     }
 
@@ -48,5 +50,14 @@ public class MedicineController {
     public ResponseEntity<List<Medicine>> getLowStockMedicines() {
         List<Medicine> lowStock = medicineService.getLowStockItems(10);
         return new  ResponseEntity<>(lowStock, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+
+    public ResponseEntity<Map<String, String>> deleteMedicine(@PathVariable String id) {
+        medicineService.deleteMedicine(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Medicine deleted successfully");
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

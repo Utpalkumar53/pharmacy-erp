@@ -18,15 +18,13 @@ public class ReportService {
     @Autowired private PurchaseOrderRepository purchaseOrderRepository;
     @Autowired private MedicineRepository medicineRepository;
     @Autowired private IndentRepository indentRepository;
-    @Autowired private SaleReturnRepository saleReturnRepository; // Fixed: Use Repository directly
+    @Autowired private SaleReturnRepository saleReturnRepository;
 
-    // --- FINANCIAL SUMMARY REPORT ---
     public Map<String, Double> getMonthlyReport(int month, int year) {
         double counterSales = saleRepository.findAll().stream()
                 .filter(s -> s.getSaleDate().getMonthValue() == month && s.getSaleDate().getYear() == year)
                 .mapToDouble(Sale::getTotalAmount).sum();
 
-        // Account for Returns in the monthly summary
         double totalRefunds = saleReturnRepository.findAll().stream()
                 .filter(r -> r.getReturnDate().getMonthValue() == month && r.getReturnDate().getYear() == year)
                 .mapToDouble(SaleReturn::getTotalRefundAmount).sum();
@@ -36,7 +34,14 @@ public class ReportService {
                         i.getRequestDate().getMonthValue() == month &&
                         i.getRequestDate().getYear() == year)
                 .flatMap(i -> i.getItems().stream())
-                .mapToDouble(item -> item.getTotalValue()).sum();
+                .mapToDouble(IndentItem::getTotalValue).sum();
+
+        // FIXED: Using the new getTotalBillAmount field
+        double totalPurchases = purchaseOrderRepository.findAll().stream()
+                .filter(p -> p.getPurchaseDate() != null &&
+                        p.getPurchaseDate().getMonthValue() == month &&
+                        p.getPurchaseDate().getYear() == year)
+                .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
 
         Map<String, Double> report = new HashMap<>();
         double netCounterSales = counterSales - totalRefunds;
@@ -44,18 +49,12 @@ public class ReportService {
         report.put("CounterSales", round(netCounterSales));
         report.put("HospitalInternalUsage", round(hospitalConsumption));
         report.put("TotalRevenueValue", round(netCounterSales + hospitalConsumption));
-
-        double totalPurchases = purchaseOrderRepository.findAll().stream()
-                .filter(p -> p.getPurchaseDate() != null && p.getPurchaseDate().getMonthValue() == month)
-                .mapToDouble(p -> p.getQuantityPurchased() * p.getUnitCostPrice()).sum();
-
         report.put("NetProfit", round((netCounterSales + hospitalConsumption) - totalPurchases));
+
         return report;
     }
 
-    // --- MODIFIED: AUDIT-READY GST REPORT ---
     public GstReport generateGstReport(int month, int year) {
-        // 1. Fetch Data
         List<Sale> monthlySales = saleRepository.findAll().stream()
                 .filter(s -> s.getSaleDate().getMonthValue() == month && s.getSaleDate().getYear() == year)
                 .toList();
@@ -72,7 +71,6 @@ public class ReportService {
                         p.getPurchaseDate().getYear() == year)
                 .toList();
 
-        // Fetch Returns to adjust the Balance Sheet
         List<SaleReturn> monthlyReturns = saleReturnRepository.findAll().stream()
                 .filter(r -> r.getReturnDate().getMonthValue() == month && r.getReturnDate().getYear() == year)
                 .toList();
@@ -83,10 +81,8 @@ public class ReportService {
         report.setMonth(Month.of(month).name());
         report.setYear(year);
 
-        // 2. REVENUE CALCULATION (Adjusted for Returns)
         double rawCounterSales = monthlySales.stream().mapToDouble(Sale::getTotalAmount).sum();
-        double netCounterSales = rawCounterSales - totalRefunds; // Subtracting the refunds
-
+        double netCounterSales = rawCounterSales - totalRefunds;
         double totalCollectedGst = monthlySales.stream().mapToDouble(Sale::getTotalTax).sum();
 
         double hospitalNormalUsage = monthlyIndents.stream()
@@ -99,7 +95,7 @@ public class ReportService {
                 .flatMap(i -> i.getItems().stream())
                 .mapToDouble(IndentItem::getTotalValue).sum();
 
-        // 3. GST MAP CALCULATION
+        // GST collected from sales
         Map<Double, Double> collectedMap = new HashMap<>();
         for (Sale sale : monthlySales) {
             if (!sale.getSaleItems().isEmpty()) {
@@ -110,30 +106,28 @@ public class ReportService {
             }
         }
 
-        // 4. PURCHASE CALCULATION
+        // FIXED: Using the new aggregated purchase fields
         Map<Double, Double> paidMap = new HashMap<>();
         double totalPurchaseVal = 0.0;
+        double totalPaidGst = 0.0;
+
         for (PurchaseOrder po : monthlyPurchases) {
-            Medicine med = medicineRepository.findById(po.getMedicineId()).orElse(null);
-            if (med != null) {
-                double rate = med.getGstPercentage();
-                double subTotal = po.getQuantityPurchased() * po.getUnitCostPrice();
-                double taxPaid = subTotal * (rate / 100);
-                totalPurchaseVal += subTotal;
-                paidMap.put(rate, round(paidMap.getOrDefault(rate, 0.0) + taxPaid));
+            totalPurchaseVal += po.getTotalBillAmount() - po.getTotalInputTax(); // Base value
+            totalPaidGst += po.getTotalInputTax();
+
+            // Map tax by rate from items
+            if(po.getItems() != null) {
+                for (PurchaseItem item : po.getItems()) {
+                    double rate = item.getGstPercentage();
+                    paidMap.put(rate, round(paidMap.getOrDefault(rate, 0.0) + item.getTaxAmount()));
+                }
             }
         }
 
-        // 5. Final Assembly
-        double totalPaidGst = paidMap.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        report.setCounterSalesTotal(round(netCounterSales)); // Net sales after returns
+        report.setCounterSalesTotal(round(netCounterSales));
         report.setHospitalNormalIndentTotal(round(hospitalNormalUsage));
         report.setHospitalEmergencyIndentTotal(round(hospitalEmergencyUsage));
-
-        // Logical Balance = (Counter Sales - Returns) + Hospital Usage
         report.setTotalSalesValue(round(netCounterSales + hospitalNormalUsage + hospitalEmergencyUsage));
-
         report.setTotalCollectedGst(round(totalCollectedGst));
         report.setCollectedGstByRate(collectedMap);
         report.setTotalPurchaseValue(round(totalPurchaseVal));
