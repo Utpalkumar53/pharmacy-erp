@@ -35,7 +35,8 @@ public class Medicine {
     // NEW FIELD: This fixed the "Cannot resolve method setCostPrice" error
     private double costPrice;
 
-    private LocalDate expiryDate;
+    // ✅ Use java.util.Date - maps perfectly with MongoDB
+    private java.util.Date expiryDate;
     private String category;
     private String supplierId;
     private String rackLocation;

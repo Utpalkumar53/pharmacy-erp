@@ -20,21 +20,39 @@ public class PurchaseOrderService {
         double totalTax = 0;
 
         for (PurchaseItem item : order.getItems()) {
-            Medicine med = medicineRepository.findById(item.getMedicineId())
-                    .orElseThrow(() -> new RuntimeException("Medicine not found: " + item.getMedicineId()));
+            // 1. SMART SEARCH: Find medicine by Name + Batch (The professional way)
+            Medicine med = medicineRepository.findAll().stream()
+                    .filter(m -> m.getName().equalsIgnoreCase(item.getMedicineName()) &&
+                            m.getBatchNo().equalsIgnoreCase(item.getBatchNo()))
+                    .findFirst()
+                    .orElse(null);
 
-            // 1. Update Stock
-            med.setStockQuantity(med.getStockQuantity() + item.getQuantity());
+            if (med != null) {
+                // OPTION A: Existing Batch - Update stock and cost
+                med.setStockQuantity(med.getStockQuantity() + item.getQuantity());
+                med.setCostPrice(item.getUnitCostPrice());
+                medicineRepository.save(med);
+                item.setMedicineId(med.getId()); // Link back to existing ID
+            } else {
+                // OPTION B: New Batch Found in Purchase - Auto-create Inventory record
+                Medicine newMed = new Medicine();
+                newMed.setName(item.getMedicineName());
+                newMed.setBatchNo(item.getBatchNo());
+                newMed.setExpiryDate(item.getExpiryDate()); // Critical: Captures the new expiry!
+                newMed.setStockQuantity(item.getQuantity());
+                newMed.setCostPrice(item.getUnitCostPrice());
+                newMed.setMrp(item.getUnitCostPrice()); // Ensure your PurchaseItem has MRP
+                newMed.setHsnCode(item.getHsnCode() != null ? item.getHsnCode() : "NA");
+                newMed.setGstPercentage(item.getGstPercentage());
 
-            // 2. Update Cost Price in Medicine (Important for pricing)
-            med.setCostPrice(item.getUnitCostPrice());
-            medicineRepository.save(med);
+                Medicine savedNewMed = medicineRepository.save(newMed);
+                item.setMedicineId(savedNewMed.getId()); // Link to the brand new ID
+            }
 
-            // 3. Calculate Math for this line
+            // 2. Calculation Logic
             double lineSubTotal = item.getQuantity() * item.getUnitCostPrice();
             double lineTax = lineSubTotal * (item.getGstPercentage() / 100);
 
-            item.setMedicineName(med.getName()); // Ensure name is correct
             item.setTaxAmount(round(lineTax));
             item.setLineTotal(round(lineSubTotal + lineTax));
 
@@ -47,7 +65,6 @@ public class PurchaseOrderService {
 
         return purchaseOrderRepository.save(order);
     }
-
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
     }

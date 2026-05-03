@@ -11,4 +11,7 @@ public class PurchaseItem {
     private double gstPercentage; // To calculate Input Tax Credit
     private double taxAmount;     // Calculated automatically
     private double lineTotal;     // quantity * cost + tax
+    private String batchNo;
+    private String hsnCode;
+    private java.util.Date expiryDate;
 }

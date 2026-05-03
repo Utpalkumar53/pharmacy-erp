@@ -10,6 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/inventory/expiry")
+@CrossOrigin(origins = "http://localhost:3000")
 public class ExpiryController {
 
     @Autowired
@@ -19,8 +20,9 @@ public class ExpiryController {
     public Map<String, List<Medicine>> getExpiryAlerts() {
         return Map.of(
                 "EXPIRED", expiryService.getExpiredMedicines(),
-                "EXPIRING_30_DAYS", expiryService.getExpiringSoon(30),
-                "EXPIRING_60_DAYS", expiryService.getExpiringSoon(60)
+                "EXPIRING_30_DAYS", expiryService.getExpiringInWindow(0,30),
+                "EXPIRING_60_DAYS", expiryService.getExpiringInWindow(31,60),
+                "EXPIRING_90_DAYS", expiryService.getExpiringInWindow(61,90)
         );
     }
 }
