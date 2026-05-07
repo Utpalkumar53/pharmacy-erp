@@ -13,10 +13,16 @@ import java.util.Optional;
 @Service
 public class SaleReturnService {
 
-    @Autowired private SaleRepository saleRepository;
-    @Autowired private SaleReturnRepository returnRepository;
-    @Autowired private MedicineRepository medicineRepository;
-    @Autowired private CustomerRepository customerRepository;
+    @Autowired
+    private SaleRepository saleRepository;
+    @Autowired
+    private SaleReturnRepository returnRepository;
+    @Autowired
+    private MedicineRepository medicineRepository;
+    @Autowired
+    private CustomerRepository customerRepository;
+    @Autowired
+    private TransactionService transactionService;
 
     @Transactional
     public SaleReturn processReturn(String saleId, List<ReturnItem> itemsToReturn, String reason, String pharmacist) {
@@ -36,13 +42,24 @@ public class SaleReturnService {
 
             Medicine med = medicineRepository.findById(item.getMedicineId()).orElse(null);
             if (med != null) {
-                med.setStockQuantity(med.getStockQuantity() + item.getQuantityReturned());
+                int newStock = med.getStockQuantity() + item.getQuantityReturned();
+                med.setStockQuantity(newStock);
                 medicineRepository.save(med);
 
                 item.setMedicineName(med.getName());
-                item.setUnitPrice(originalItem.getUnitPrice()); // FIX: Use price from original bill
+                item.setUnitPrice(originalItem.getUnitPrice());
                 item.setSubTotal(item.getQuantityReturned() * originalItem.getUnitPrice());
                 refundTotal += item.getSubTotal();
+
+                // ✅ Log to Stock Ledger
+                transactionService.logTransaction(
+                        med.getName(),
+                        med.getBatchNo(),
+                        "SALE_RETURN",
+                        +item.getQuantityReturned(),
+                        newStock,
+                        pharmacist      // ← this is already available as method parameter
+                );
             }
         }
 

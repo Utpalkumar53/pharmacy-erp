@@ -33,4 +33,7 @@ public class Sale {
 
     // NEW: Flag to allow selling from the safety stock
     private boolean emergencySale = false;
+    // Add these two fields in Sale.java
+    private double finalAmount;  // ✅ What cashier actually charged
+    private double roundOff;     // ✅ Difference tracked
 }

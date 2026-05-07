@@ -8,10 +8,12 @@ public class PurchaseItem {
     private String medicineName;
     private int quantity;
     private double unitCostPrice;
-    private double gstPercentage; // To calculate Input Tax Credit
-    private double taxAmount;     // Calculated automatically
-    private double lineTotal;     // quantity * cost + tax
+    private double sellingPrice;    // ← ADD THIS
+    private double gstPercentage;
+    private double taxAmount;
+    private double lineTotal;
     private String batchNo;
     private String hsnCode;
     private java.util.Date expiryDate;
+    private String rackNumber; // ✅ Added to capture location from the purchase form
 }

@@ -14,4 +14,7 @@ public interface MedicineRepository extends MongoRepository<Medicine, String> {
     List<Medicine> findByStockQuantityLessThan(int threshold);
 
     List<Medicine> findByRackLocation(String rackLocation);
+
+    // find all batches of a medicine, only those in stock, sorted by earliest expiry first
+    List<Medicine> findByNameAndStockQuantityGreaterThanOrderByExpiryDateAsc(String name, int minStock);
 }

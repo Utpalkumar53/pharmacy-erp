@@ -22,37 +22,77 @@ public class MedicineService {
     @Autowired
     private AuditService auditService;
 
-    // ✅ Save single medicine
+    @Autowired
+    private TransactionService transactionService; // Injecting the Stock Ledger Service
+
+    // ✅ Save single medicine (Auto-sets stock to 0 by default)
     public Medicine saveMedicine(Medicine medicine) {
-        return medicineRepository.save(medicine);
+        // Force initial catalog stock quantity to 0
+        medicine.setStockQuantity(0);
+
+        Medicine saved = medicineRepository.save(medicine);
+
+        // Bypassed automatic PURCHASE_ADD ledger logging here.
+        // Stock increases are now exclusively managed via Purchase Orders.
+        return saved;
     }
 
-    // ✅ Save bulk medicines
+    // ✅ Save bulk medicines (Auto-sets stock to 0 by default)
     public List<Medicine> addBulkMedicines(List<Medicine> medicines) {
         if (medicines == null || medicines.isEmpty()) {
             throw new RuntimeException("Cannot add an empty list of medicines");
         }
-        return medicineRepository.saveAll(medicines);
+
+        // Force all bulk uploaded catalog items to start with 0 stock
+        for (Medicine med : medicines) {
+            med.setStockQuantity(0);
+        }
+
+        List<Medicine> savedList = medicineRepository.saveAll(medicines);
+
+        // Bypassed bulk PURCHASE_ADD ledger logging.
+        // Initial catalog entries are initialized cleanly with 0 stock.
+        return savedList;
     }
 
-    // ✅ Updated logic to fix Stock and Price saving issues
+    // ✅ Update medicine (Computes and Syncs Stock Difference & Handles Rack Number)
     public Medicine updateMedicine(String id, Medicine medicineDetails) {
         Medicine existingMedicine = medicineRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Medicine not found with ID: " + id));
+
+        int oldStock = existingMedicine.getStockQuantity();
+        int newStock = medicineDetails.getStockQuantity();
+        int stockDifference = newStock - oldStock;
 
         // Update basic details
         existingMedicine.setName(medicineDetails.getName());
         existingMedicine.setBatchNo(medicineDetails.getBatchNo());
         existingMedicine.setExpiryDate(medicineDetails.getExpiryDate());
 
-        // CRITICAL FIX: Adding the missing fields
-        existingMedicine.setStockQuantity(medicineDetails.getStockQuantity());
+        // Update target details
+        existingMedicine.setStockQuantity(newStock);
         existingMedicine.setMrp(medicineDetails.getMrp());
         existingMedicine.setHsnCode(medicineDetails.getHsnCode());
         existingMedicine.setGstPercentage(medicineDetails.getGstPercentage());
         existingMedicine.setCostPrice(medicineDetails.getCostPrice());
+        existingMedicine.setRackLocation(medicineDetails.getRackLocation()); // ✅ Saved Rack Number
+        existingMedicine.setCategory(medicineDetails.getCategory()); // ✅ Must exist
 
-        return medicineRepository.save(existingMedicine);
+        Medicine updated = medicineRepository.save(existingMedicine);
+
+        // If your father changed the physical box count (Manual Edit/Correction), log the change
+        if (stockDifference != 0) {
+            transactionService.logTransaction(
+                    updated.getName(),
+                    updated.getBatchNo(),
+                    "STOCK_CORRECTION",
+                    stockDifference, // Can be positive (found stock) or negative (damaged/lost)
+                    newStock,
+                    "MANUAL_EDIT"
+            );
+        }
+
+        return updated;
     }
 
     // ✅ Get all medicines
@@ -67,6 +107,16 @@ public class MedicineService {
                         "Medicine not found with ID: " + id));
 
         medicineRepository.delete(medicine);
+
+        // Log to ledger that stock went down to absolute zero due to deletion
+        transactionService.logTransaction(
+                medicine.getName(),
+                medicine.getBatchNo(),
+                "MANUAL_DELETE",
+                -medicine.getStockQuantity(),
+                0,
+                "ITEM_DELETED"
+        );
 
         String currentUser = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
@@ -83,10 +133,6 @@ public class MedicineService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ SINGLE expiry method using java.util.Date
-    // Removed duplicate getExpiringMedicines() which used Instant
-    // getNearExpiryMedicines() and getExpiringMedicines() were doing
-    // same thing — kept only one clean version
     public List<Medicine> getNearExpiryMedicines(int days) {
         Date today = new Date();
         Calendar cal = Calendar.getInstance();
@@ -101,8 +147,6 @@ public class MedicineService {
                 .collect(Collectors.toList());
     }
 
-    // Inside MedicineService.java
-
     public List<Medicine> searchMedicines(String query) {
         if (query == null || query.isEmpty()) return new ArrayList<>();
 
@@ -113,7 +157,6 @@ public class MedicineService {
                 .collect(Collectors.toList());
     }
 
-    // Add this method to MedicineService.java
     public Medicine findByNameAndBatch(String name, String batchNo) {
         return medicineRepository.findAll().stream()
                 .filter(m -> m.getName().equalsIgnoreCase(name) && m.getBatchNo().equalsIgnoreCase(batchNo))
@@ -121,12 +164,8 @@ public class MedicineService {
                 .orElse(null);
     }
 
-    // this will handle update by name
-    // Inside MedicineService.java
-
-    @Transactional // Ensures all updates happen or none do
+    @Transactional
     public void updatePriceByName(String name, double newMrp) {
-        // Find every record that matches the name (Calpol, Azithromycin, etc.)
         List<Medicine> batches = medicineRepository.findAll().stream()
                 .filter(m -> m.getName().equalsIgnoreCase(name))
                 .collect(Collectors.toList());
@@ -135,12 +174,12 @@ public class MedicineService {
             throw new RuntimeException("No medicine found with name: " + name);
         }
 
-        // Update the MRP for every single batch found
         for (Medicine med : batches) {
             med.setMrp(newMrp);
             medicineRepository.save(med);
         }
     }
+
     @Transactional
     public void updateBulkDetailsByName(String name, Double newMrp, Integer newGst) {
         List<Medicine> medicines = medicineRepository.findAll().stream()
@@ -152,5 +191,26 @@ public class MedicineService {
             if (newGst != null) med.setGstPercentage(newGst);
             medicineRepository.save(med);
         }
+    }
+
+    public List<Medicine> getSmartBatchSelection(String medicineName, boolean allowNearExpiryOverride) {
+        List<Medicine> allBatches = medicineRepository.findByNameAndStockQuantityGreaterThanOrderByExpiryDateAsc(medicineName, 0);
+
+        if (allowNearExpiryOverride) {
+            return allBatches;
+        }
+
+        Date today = new Date();
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(today);
+        cal.add(Calendar.DAY_OF_YEAR, 60);
+        Date sixtyDaysFromNow = cal.getTime();
+
+        return allBatches.stream().filter(m -> {
+            boolean isNearExpiry = m.getExpiryDate() != null && m.getExpiryDate().before(sixtyDaysFromNow);
+            boolean isAboveEmergencyStock = m.getStockQuantity() >= 20;
+
+            return isAboveEmergencyStock || isNearExpiry;
+        }).collect(Collectors.toList());
     }
 }

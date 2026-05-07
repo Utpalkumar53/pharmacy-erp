@@ -11,14 +11,27 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/purchases")
+@CrossOrigin(origins = "http://localhost:3000")
 public class PurchaseController {
 
     @Autowired
     private PurchaseOrderService purchaseOrderService;
 
-   @PostMapping("/receive") // Added path to match the logic of receiving stock
-   public ResponseEntity<PurchaseOrder> createPurchaseOrder(@RequestBody PurchaseOrder purchaseOrder){
-       PurchaseOrder purchaseOrders = purchaseOrderService.saveOrder(purchaseOrder);
-       return new ResponseEntity<>(purchaseOrders, HttpStatus.CREATED);
-   }
+    // ✅ Matches frontend save handler (React calls: api.post('/purchases/receive'))
+    @PostMapping("/receive")
+    public ResponseEntity<PurchaseOrder> createPurchaseOrder(@RequestBody PurchaseOrder purchaseOrder){
+        PurchaseOrder purchaseOrders = purchaseOrderService.saveOrder(purchaseOrder);
+        return new ResponseEntity<>(purchaseOrders, HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PurchaseOrder>> getAllOrders() {
+        return ResponseEntity.ok(purchaseOrderService.getAllOrders());
+    }
+
+    // ✅ Matches PurchaseHistory fetch handler (React calls: api.get('/purchases/history'))
+    @GetMapping("/history")
+    public ResponseEntity<List<PurchaseOrder>> getPurchaseHistory() {
+        return ResponseEntity.ok(purchaseOrderService.getAllOrders());
+    }
 }

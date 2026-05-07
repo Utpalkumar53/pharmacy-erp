@@ -87,6 +87,21 @@ public class MedicineController {
         return new ResponseEntity<>(medicineService.getLowStockItems(10), HttpStatus.OK);
     }
 
+    @GetMapping("/suggest-batches")
+    public ResponseEntity<List<Medicine>> suggestBatches(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "false") boolean override) {
+
+        // This calls the "Smart Selection" logic we added to the Service
+        List<Medicine> suggestions = medicineService.getSmartBatchSelection(name, override);
+        return ResponseEntity.ok(suggestions);
+    }
+
+    @GetMapping("/near-expiry")
+    public ResponseEntity<List<Medicine>> getNearExpiry(@RequestParam(defaultValue = "30") int days) {
+        return ResponseEntity.ok(medicineService.getNearExpiryMedicines(days));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteMedicine(@PathVariable String id) {
         medicineService.deleteMedicine(id);
