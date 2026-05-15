@@ -12,10 +12,13 @@ public class PurchaseReturn {
     @Id
     private String id;
     private String supplierName;
-    private String referenceInvoiceNo; // The supplier's original bill number
+    private String referenceInvoiceNo;
     private LocalDateTime returnDate;
-    private List<ReturnItem> items;    // Using your existing helper class
+    private List<ReturnItem> items;
     private double totalReturnAmount;
-    private String reason;             // e.g., "Expired" or "Damaged Stock"
+    private String reason;
     private String processedBy;
+
+    // ✅ ADD THIS
+    private String status; // values: "PENDING", "APPROVED", "REJECTED"
 }

@@ -4,7 +4,6 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
-
 import java.util.Date;
 
 @Data
@@ -14,15 +13,31 @@ public class Medicine {
     private String id;
     private String name;
     private String batchNo;
-    private int stockQuantity = 0; // ✅ Defaults to 0 now
+    private int stockQuantity = 0;
     private double mrp;
     private double costPrice;
     private Date expiryDate;
-    private int minStockLevel = 10;
+    private int minStockLevel = 20;
     private String hsnCode;
     private int gstPercentage = 12;
 
-    @Field("rackNumber") // Explicitly map to MongoDB document field
-    private String rackLocation;    // ✅ NEW FIELD: To track physical location in the shop
+    @Field("rackNumber")
+    private String rackLocation;
     private String category;
+
+    // ✅ FIXED: Using these names so they match your Service methods exactly
+    @Field("supplierId")
+    private String supplierId;
+    private String supplierName;
+
+    public String getPreferredSupplierId() {
+        return supplierId != null ? supplierId : preferredSupplierId;
+    }
+
+    public void setPreferredSupplierId(String id) {
+        this.supplierId = id;
+        this.preferredSupplierId = id;
+    }
+
+    private String preferredSupplierId; // catches old docs
 }

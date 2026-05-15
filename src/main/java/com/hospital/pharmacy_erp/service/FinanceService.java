@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class FinanceService {
@@ -16,7 +19,64 @@ public class FinanceService {
     @Autowired private SaleRepository saleRepository;
     @Autowired private PurchaseOrderRepository purchaseOrderRepository;
     @Autowired private ExpenseRepository expenseRepository;
+    @Autowired private MedicineRepository medicineRepository;
+    @Autowired private CustomerRepository customerRepository;
 
+    // BUSINESS PROFIT & SAVINGS (Monthly)
+    public Map<String, Double> getMonthlyFinancialOverview() {
+        LocalDateTime firstDayOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+
+        // 1. Gross Profit Calculation
+        double totalGrossProfit = saleRepository.findAll().stream()
+                .filter(s -> s.getSaleDate() != null && s.getSaleDate().isBefore(firstDayOfMonth))
+                .flatMap(s -> s.getSaleItems().stream())
+                .mapToDouble(item -> {
+                    Medicine med = medicineRepository.findById(item.getMedicineId()).orElse(null);
+                    double cost = (med != null) ? med.getCostPrice() : 0;
+                    return (item.getUnitPrice() - cost) * item.getQuantity();
+                }).sum();
+
+        // 2. Total Shop Expenses
+        double totalExpenses = expenseRepository.findAll().stream()
+                .filter(e -> e.getExpenseDate() != null && e.getExpenseDate().isBefore(firstDayOfMonth))
+                .mapToDouble(Expense::getAmount).sum();
+
+        Map<String, Double> overview = new HashMap<>();
+        overview.put("monthlyGrossProfit", round(totalGrossProfit));
+        overview.put("monthlyExpenses", round(totalExpenses));
+        overview.put("netSavings", round(totalGrossProfit - totalExpenses));
+        return overview;
+    }
+
+    // GST INTELLIGENCE (For CA Report)
+    public Map<String, Double> getGSTReport() {
+        // Safe parsing of tax field
+        double outputTax = saleRepository.findAll().stream()
+                .mapToDouble(s -> {
+                    Object tax = s.getTotalTax();
+                    if (tax == null) return 0.0;
+                    if (tax instanceof Number) return ((Number) tax).doubleValue();
+                    try {
+                        return Double.parseDouble(tax.toString());
+                    } catch (Exception e) { return 0.0; }
+                }).sum();
+
+        double inputTaxCredit = purchaseOrderRepository.findAll().stream()
+                .mapToDouble(PurchaseOrder::getTotalInputTax).sum();
+
+        Map<String, Double> gstData = new HashMap<>();
+        gstData.put("outputTax", round(outputTax));
+        gstData.put("inputTaxCredit", round(inputTaxCredit));
+        gstData.put("netGstPayable", round(outputTax - inputTaxCredit));
+        return gstData;
+    }
+
+
+    // ... existing autowired repositories ...
+
+    /**
+     * Calculates the daily cash position: (Sales) - (Purchases + Expenses) for a specific date.
+     */
     public double getDailyCashPosition(LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
@@ -26,17 +86,13 @@ public class FinanceService {
                 .filter(s -> s.getSaleDate() != null &&
                         s.getSaleDate().isAfter(startOfDay) &&
                         s.getSaleDate().isBefore(endOfDay))
-                .mapToDouble(Sale::getTotalAmount).sum(); // Using TotalAmount (incl. tax)
+                .mapToDouble(Sale::getTotalAmount).sum();
 
-        // 2. Purchases today (Fixed the variable name error here)
-        List<PurchaseOrder> dailyPurchases = purchaseOrderRepository.findAll().stream()
+        // 2. Purchases today
+        double totalPurchases = purchaseOrderRepository.findAll().stream()
                 .filter(p -> p.getPurchaseDate() != null &&
                         p.getPurchaseDate().isAfter(startOfDay) &&
                         p.getPurchaseDate().isBefore(endOfDay))
-                .toList();
-
-        // FIXED: Changed monthlyPurchases to dailyPurchases
-        double totalPurchases = dailyPurchases.stream()
                 .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
 
         // 3. Expenses today
@@ -46,11 +102,125 @@ public class FinanceService {
                         e.getExpenseDate().isBefore(endOfDay))
                 .mapToDouble(Expense::getAmount).sum();
 
-        // Ledger: What came in - What went out
+        // Final Ledger: Cash In - Cash Out
         return round(totalSales - (totalPurchases + totalExpenses));
     }
 
+    // P&L for a specific month and year
+    public Map<String, Double> getProfitAndLoss(int month, int year) {
+        // Sales revenue
+        double totalRevenue = saleRepository.findAll().stream()
+                .filter(s -> s.getSaleDate() != null &&
+                        s.getSaleDate().getMonthValue() == month &&
+                        s.getSaleDate().getYear() == year)
+                .mapToDouble(Sale::getTotalAmount).sum();
+
+        // Cost of goods sold
+        double totalCOGS = saleRepository.findAll().stream()
+                .filter(s -> s.getSaleDate() != null &&
+                        s.getSaleDate().getMonthValue() == month &&
+                        s.getSaleDate().getYear() == year)
+                .flatMap(s -> s.getSaleItems().stream())
+                .mapToDouble(item -> {
+                    Medicine med = medicineRepository.findById(item.getMedicineId()).orElse(null);
+                    double cost = (med != null) ? med.getCostPrice() : 0;
+                    return cost * item.getQuantity();
+                }).sum();
+
+        // Total purchases this month
+        double totalPurchases = purchaseOrderRepository.findAll().stream()
+                .filter(p -> p.getPurchaseDate() != null &&
+                        p.getPurchaseDate().getMonthValue() == month &&
+                        p.getPurchaseDate().getYear() == year)
+                .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
+
+        // Total expenses this month
+        double totalExpenses = expenseRepository.findAll().stream()
+                .filter(e -> e.getExpenseDate() != null &&
+                        e.getExpenseDate().getMonthValue() == month &&
+                        e.getExpenseDate().getYear() == year)
+                .mapToDouble(Expense::getAmount).sum();
+
+        // GST collected
+        double totalGst = saleRepository.findAll().stream()
+                .filter(s -> s.getSaleDate() != null &&
+                        s.getSaleDate().getMonthValue() == month &&
+                        s.getSaleDate().getYear() == year)
+                .mapToDouble(s -> {
+                    Object tax = s.getTotalTax();
+                    if (tax == null) return 0.0;
+                    if (tax instanceof Number) return ((Number) tax).doubleValue();
+                    try { return Double.parseDouble(tax.toString()); }
+                    catch (Exception e) { return 0.0; }
+                }).sum();
+
+        double grossProfit = totalRevenue - totalCOGS;
+        double netProfit   = grossProfit - totalExpenses;
+
+        Map<String, Double> pl = new HashMap<>();
+        pl.put("totalRevenue",   round(totalRevenue));
+        pl.put("totalCOGS",      round(totalCOGS));
+        pl.put("grossProfit",    round(grossProfit));
+        pl.put("totalExpenses",  round(totalExpenses));
+        pl.put("totalPurchases", round(totalPurchases));
+        pl.put("totalGst",       round(totalGst));
+        pl.put("netProfit",      round(netProfit));
+        pl.put("profitMargin",   totalRevenue > 0 ? round((grossProfit / totalRevenue) * 100) : 0.0);
+
+        // Outstanding balance
+        double totalOutstanding = customerRepository.findAll().stream()
+                .mapToDouble(Customer::getOutstandingBalance)
+                .sum();
+        pl.put("totalOutstanding", round(totalOutstanding));
+
+        return pl;
+    }
+
+    // Daily cash book for entire month
+    public List<Map<String, Object>> getMonthlyCashBook(int month, int year) {
+        List<Map<String, Object>> cashBook = new ArrayList<>();
+
+        // Get all days in the month
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end   = start.withDayOfMonth(start.lengthOfMonth());
+
+        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+            LocalDateTime startOfDay = date.atStartOfDay();
+            LocalDateTime endOfDay   = date.atTime(LocalTime.MAX);
+
+            double salesIn = saleRepository.findAll().stream()
+                    .filter(s -> s.getSaleDate() != null &&
+                            s.getSaleDate().isAfter(startOfDay) &&
+                            s.getSaleDate().isBefore(endOfDay))
+                    .mapToDouble(Sale::getTotalAmount).sum();
+
+            double purchasesOut = purchaseOrderRepository.findAll().stream()
+                    .filter(p -> p.getPurchaseDate() != null &&
+                            p.getPurchaseDate().isAfter(startOfDay) &&
+                            p.getPurchaseDate().isBefore(endOfDay))
+                    .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
+
+            double expensesOut = expenseRepository.findAll().stream()
+                    .filter(e -> e.getExpenseDate() != null &&
+                            e.getExpenseDate().isAfter(startOfDay) &&
+                            e.getExpenseDate().isBefore(endOfDay))
+                    .mapToDouble(Expense::getAmount).sum();
+
+            // Only include days that had activity
+            if (salesIn > 0 || purchasesOut > 0 || expensesOut > 0) {
+                Map<String, Object> dayEntry = new HashMap<>();
+                dayEntry.put("date",        date.toString());
+                dayEntry.put("salesIn",     round(salesIn));
+                dayEntry.put("purchasesOut",round(purchasesOut));
+                dayEntry.put("expensesOut", round(expensesOut));
+                dayEntry.put("netCash",     round(salesIn - purchasesOut - expensesOut));
+                cashBook.add(dayEntry);
+            }
+        }
+        return cashBook;
+    }
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
+
 }

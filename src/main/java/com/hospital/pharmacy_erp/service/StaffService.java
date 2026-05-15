@@ -98,4 +98,17 @@ public class StaffService {
 
         return report;
     }
+
+    public List<Attendance> getTodayAttendance() {
+        LocalDate today = LocalDate.now();
+        return attendanceRepository.findAll().stream()
+                .filter(a -> a.getDate().equals(today))
+                .toList();
+    }
+
+    public List<Attendance> getStaffAttendance(String staffId) {
+        return attendanceRepository.findAll().stream()
+                .filter(a -> a.getStaffId().equals(staffId))
+                .toList();
+    }
 }

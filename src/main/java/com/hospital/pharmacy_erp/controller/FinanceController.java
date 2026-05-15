@@ -10,14 +10,37 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/finance")
+@CrossOrigin(origins = "http://localhost:3000")
 public class FinanceController {
 
     @Autowired
     private FinanceService financeService;
 
     @GetMapping("/daily-cash")
-    public ResponseEntity<Double> getDailyCash(@RequestParam("date")
-                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    public ResponseEntity<Double> getDailyCash(
+            @RequestParam("date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(financeService.getDailyCashPosition(date));
+    }
+
+    @GetMapping("/monthly-overview")
+    public ResponseEntity<?> getMonthlyOverview() {
+        return ResponseEntity.ok(financeService.getMonthlyFinancialOverview());
+    }
+
+    // P&L for specific month/year
+    @GetMapping("/profit-loss")
+    public ResponseEntity<?> getProfitLoss(
+            @RequestParam int month,
+            @RequestParam int year) {
+        return ResponseEntity.ok(financeService.getProfitAndLoss(month, year));
+    }
+
+    // Daily cash book for full month
+    @GetMapping("/cash-book")
+    public ResponseEntity<?> getCashBook(
+            @RequestParam int month,
+            @RequestParam int year) {
+        return ResponseEntity.ok(financeService.getMonthlyCashBook(month, year));
     }
 }

@@ -19,4 +19,8 @@ public class Supplier {
     private String email;
     private String gstNumber;
     private String address;
+
+    // Frontend posts "gstin" — this setter catches it and maps to gstNumber
+    public void setGstin(String gstin) { this.gstNumber = gstin; }
+    public String getGstin()           { return this.gstNumber; }
 }

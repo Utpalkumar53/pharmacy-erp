@@ -34,4 +34,22 @@ public class ExpenseController {
         Expense saved = expenseRepository.save(expense);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteExpense(@PathVariable String id) {
+        expenseRepository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/monthly-total")
+    public ResponseEntity<Double> getMonthlyTotal(
+            @RequestParam int month,
+            @RequestParam int year) {
+        double total = expenseRepository.findAll().stream()
+                .filter(e -> e.getExpenseDate() != null &&
+                        e.getExpenseDate().getMonthValue() == month &&
+                        e.getExpenseDate().getYear() == year)
+                .mapToDouble(Expense::getAmount).sum();
+        return ResponseEntity.ok(Math.round(total * 100.0) / 100.0);
+    }
 }

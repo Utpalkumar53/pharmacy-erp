@@ -84,7 +84,7 @@ public class MedicineController {
     @GetMapping("/low-stock")
     public ResponseEntity<List<Medicine>> getLowStockMedicines() {
         // Setting threshold to 10 for low stock alerts
-        return new ResponseEntity<>(medicineService.getLowStockItems(10), HttpStatus.OK);
+        return new ResponseEntity<>(medicineService.getLowStockItems(), HttpStatus.OK);
     }
 
     @GetMapping("/suggest-batches")

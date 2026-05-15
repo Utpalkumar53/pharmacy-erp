@@ -11,6 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
+@CrossOrigin(origins = "http://localhost:3000")
 public class ReportController {
 
     @Autowired
@@ -32,9 +33,14 @@ public class ReportController {
     }
 
     @GetMapping("/gst-summary")
-    public ResponseEntity<GstReport> getGstReport(
+    public ResponseEntity<?> getGstReport(
             @RequestParam int month,
             @RequestParam int year) {
-        return ResponseEntity.ok(reportService.generateGstReport(month, year));
+        try {
+            return ResponseEntity.ok(reportService.generateGstReport(month, year));
+        } catch (Exception e) {
+            e.printStackTrace(); // shows real error in Spring console
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
     }
 }

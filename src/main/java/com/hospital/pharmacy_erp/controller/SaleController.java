@@ -1,7 +1,6 @@
 package com.hospital.pharmacy_erp.controller;
 
 import com.hospital.pharmacy_erp.entity.Sale;
-import com.hospital.pharmacy_erp.repository.SaleRepository;
 import com.hospital.pharmacy_erp.service.PdfService;
 import com.hospital.pharmacy_erp.service.SaleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,6 +56,17 @@ public class SaleController {
     public ResponseEntity<Sale> getById(@PathVariable String id) {
         // This is where the service method gets "Used"
         return ResponseEntity.ok(saleService.getSaleById(id));
+    }
+
+    @GetMapping("/recent")
+    public ResponseEntity<List<Sale>> getRecentSales() {
+        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
+        List<Sale> todaySales = saleService.getAllSales().stream()
+                .filter(s -> s.getSaleDate() != null && s.getSaleDate().isAfter(startOfDay))
+                .sorted((a, b) -> b.getSaleDate().compareTo(a.getSaleDate()))
+                .limit(10)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(todaySales);
     }
 
     @PostMapping

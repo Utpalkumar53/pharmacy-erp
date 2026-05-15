@@ -1,5 +1,6 @@
 package com.hospital.pharmacy_erp.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,7 +21,11 @@ public class Attendance {
     private String staffId;
     private String staffName;
     private LocalDate date;
+
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime checkInTime;
+
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime checkOutTime;
     private String status; // PRESENT, ABSENT, LEAVE
 }

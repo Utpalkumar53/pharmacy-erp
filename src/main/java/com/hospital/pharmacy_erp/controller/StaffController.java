@@ -2,6 +2,7 @@ package com.hospital.pharmacy_erp.controller;
 
 import com.hospital.pharmacy_erp.entity.Attendance;
 import com.hospital.pharmacy_erp.entity.Staff;
+import com.hospital.pharmacy_erp.repository.StaffRepository;
 import com.hospital.pharmacy_erp.service.StaffService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,8 @@ public class StaffController {
 
     @Autowired
     private StaffService staffService;
+    @Autowired
+    private StaffRepository staffRepository;
 
     // 1. Register a new Staff member
     @PostMapping
@@ -49,5 +52,24 @@ public class StaffController {
             @RequestParam int month,
             @RequestParam int year) {
         return ResponseEntity.ok(staffService.calculateMonthlySalary(id, month, year));
+    }
+
+    // Get today's attendance — needed for dashboard "on duty" card
+    @GetMapping("/attendance/today")
+    public ResponseEntity<List<Attendance>> getTodayAttendance() {
+        return ResponseEntity.ok(staffService.getTodayAttendance());
+    }
+
+    // Get all attendance for a staff member
+    @GetMapping("/attendance/{id}")
+    public ResponseEntity<List<Attendance>> getStaffAttendance(@PathVariable String id) {
+        return ResponseEntity.ok(staffService.getStaffAttendance(id));
+    }
+
+    // Delete staff
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteStaff(@PathVariable String id) {
+        staffRepository.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 }

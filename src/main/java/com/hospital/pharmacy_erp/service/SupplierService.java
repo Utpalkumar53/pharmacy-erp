@@ -28,4 +28,20 @@ public class SupplierService {
         }
         return false; // Tells the Controller that nothing was found to delete
     }
+
+    // Inside SupplierService.java
+
+    public Supplier getOrCreateSupplierByName(String name) {
+        return supplierRepository.findAll().stream()
+                .filter(s -> s.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElseGet(() -> {
+                    // If supplier doesn't exist, create a new "Loose" profile
+                    Supplier newSup = new Supplier();
+                    newSup.setName(name);
+                    newSup.setContactPhone("N/A"); // Father can edit this later in Supplier screen
+                    newSup.setEmail("N/A");
+                    return supplierRepository.save(newSup);
+                });
+    }
 }

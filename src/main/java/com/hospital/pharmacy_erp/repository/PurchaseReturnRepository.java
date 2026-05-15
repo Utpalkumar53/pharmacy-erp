@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PurchaseReturnRepository extends MongoRepository<PurchaseReturn, String> {
+
+    // ✅ ADD THIS — Spring Data will auto-implement this
+    long countByStatus(String status);
 }

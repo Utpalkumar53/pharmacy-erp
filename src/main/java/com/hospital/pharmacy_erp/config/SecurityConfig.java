@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/customers/**").hasAnyAuthority("ADMIN", "PHARMACIST")
                         .requestMatchers("/api/returns/**").hasAnyAuthority("ADMIN", "PHARMACIST")
                         .requestMatchers("/api/inventory/expiry/**").hasAnyAuthority("ADMIN", "PHARMACIST")
+                                .requestMatchers("/api/inventory/expiry/**").hasAnyAuthority("ADMIN", "PHARMACIST").requestMatchers("/api/auth/verify").authenticated() // add before anyRequest
 
                         // 5. CATCH-ALL
                         .anyRequest().authenticated())

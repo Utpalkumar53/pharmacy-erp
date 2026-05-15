@@ -68,6 +68,8 @@ public class MedicineService {
         existingMedicine.setName(medicineDetails.getName());
         existingMedicine.setBatchNo(medicineDetails.getBatchNo());
         existingMedicine.setExpiryDate(medicineDetails.getExpiryDate());
+        existingMedicine.setSupplierId(medicineDetails.getSupplierId());
+        existingMedicine.setSupplierName(medicineDetails.getSupplierName());
 
         // Update target details
         existingMedicine.setStockQuantity(newStock);
@@ -126,7 +128,11 @@ public class MedicineService {
         }
     }
 
-    // ✅ Low stock check
+    public List<Medicine> getLowStockItems() {
+        return medicineRepository.findAll().stream()
+                .filter(m -> m.getStockQuantity() <= m.getMinStockLevel())
+                .collect(Collectors.toList());
+    }// ✅ Low stock check
     public List<Medicine> getLowStockItems(int threshold) {
         return medicineRepository.findAll().stream()
                 .filter(m -> m.getStockQuantity() <= threshold)
