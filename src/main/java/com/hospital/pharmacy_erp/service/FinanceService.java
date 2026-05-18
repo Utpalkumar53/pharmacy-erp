@@ -21,6 +21,7 @@ public class FinanceService {
     @Autowired private ExpenseRepository expenseRepository;
     @Autowired private MedicineRepository medicineRepository;
     @Autowired private CustomerRepository customerRepository;
+    @Autowired private PurchaseReturnRepository purchaseReturnRepository;
 
     // BUSINESS PROFIT & SAVINGS (Monthly)
     public Map<String, Double> getMonthlyFinancialOverview() {
@@ -219,6 +220,83 @@ public class FinanceService {
         }
         return cashBook;
     }
+
+    public Map<String, Object> getBalanceSheet() {
+        LocalDate today = LocalDate.now();
+
+        // ── ASSETS ────────────────────────────────────────────────────────────
+
+        // 1. Inventory value (all medicines in stock × cost price)
+        double inventoryValue = medicineRepository.findAll().stream()
+                .filter(m -> m.getStockQuantity() > 0)
+                .mapToDouble(m -> {
+                    double price = m.getCostPrice() > 0 ? m.getCostPrice() : m.getMrp();
+                    return price * m.getStockQuantity();
+                }).sum();
+
+        // 2. Customer receivables (udhaar outstanding)
+        double customerReceivables = customerRepository.findAll().stream()
+                .mapToDouble(Customer::getOutstandingBalance).sum();
+
+        // 3. Total revenue collected (all time cash in)
+        double totalRevenueCollected = saleRepository.findAll().stream()
+                .filter(s -> !"CREDIT".equals(s.getPaymentMethod()))
+                .mapToDouble(Sale::getTotalAmount).sum();
+
+        // ── LIABILITIES ───────────────────────────────────────────────────────
+
+        // 1. Total purchases (what was spent on stock)
+        double totalPurchases = purchaseOrderRepository.findAll().stream()
+                .mapToDouble(PurchaseOrder::getTotalBillAmount).sum();
+
+        // 2. Total expenses (all time)
+        double totalExpenses = expenseRepository.findAll().stream()
+                .mapToDouble(Expense::getAmount).sum();
+
+        // 3. GST payable (output - input)
+        double outputGst = saleRepository.findAll().stream()
+                .mapToDouble(s -> {
+                    Object tax = s.getTotalTax();
+                    if (tax == null) return 0.0;
+                    if (tax instanceof Number) return ((Number) tax).doubleValue();
+                    try { return Double.parseDouble(tax.toString()); }
+                    catch (Exception e) { return 0.0; }
+                }).sum();
+        double inputGst = purchaseOrderRepository.findAll().stream()
+                .mapToDouble(PurchaseOrder::getTotalInputTax).sum();
+        double netGstPayable = Math.max(0, outputGst - inputGst);
+
+        // 4. Supplier returns received value
+        double supplierReturnValue = purchaseReturnRepository.findAll().stream()
+                .mapToDouble(PurchaseReturn::getTotalReturnAmount).sum();
+
+        // ── TOTALS ────────────────────────────────────────────────────────────
+        double totalAssets      = round(inventoryValue + customerReceivables + totalRevenueCollected);
+        double totalLiabilities = round(totalPurchases + totalExpenses + netGstPayable);
+        double netWorth         = round(totalAssets - totalLiabilities);
+
+        Map<String, Object> bs = new HashMap<>();
+
+        // Assets
+        bs.put("inventoryValue",        round(inventoryValue));
+        bs.put("customerReceivables",   round(customerReceivables));
+        bs.put("totalRevenueCollected", round(totalRevenueCollected));
+        bs.put("totalAssets",           totalAssets);
+
+        // Liabilities
+        bs.put("totalPurchases",        round(totalPurchases));
+        bs.put("totalExpenses",         round(totalExpenses));
+        bs.put("netGstPayable",         round(netGstPayable));
+        bs.put("supplierReturnValue",   round(supplierReturnValue));
+        bs.put("totalLiabilities",      totalLiabilities);
+
+        // Net
+        bs.put("netWorth",              netWorth);
+        bs.put("asOfDate",              today.toString());
+
+        return bs;
+    }
+
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
     }

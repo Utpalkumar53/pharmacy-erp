@@ -1,4 +1,4 @@
-package com.hospital.pharmacy_erp.service;
+package com.hospital.pharmacy_erp.security;
 
 import com.hospital.pharmacy_erp.entity.User;
 import com.hospital.pharmacy_erp.repository.UserRepository;
@@ -26,9 +26,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
-                // Use authorities instead of roles to prevent automatic "ROLE_" prefixing
                 .authorities(user.getRoles().stream()
-                        .map(role -> new SimpleGrantedAuthority(role.name()))
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name())) // ← only change
                         .collect(Collectors.toList()))
                 .disabled(!user.isActive())
                 .build();

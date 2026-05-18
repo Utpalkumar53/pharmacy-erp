@@ -43,4 +43,9 @@ public class FinanceController {
             @RequestParam int year) {
         return ResponseEntity.ok(financeService.getMonthlyCashBook(month, year));
     }
+
+    @GetMapping("/balance-sheet")
+    public ResponseEntity<?> getBalanceSheet() {
+        return ResponseEntity.ok(financeService.getBalanceSheet());
+    }
 }
