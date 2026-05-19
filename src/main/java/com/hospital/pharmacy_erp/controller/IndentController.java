@@ -12,40 +12,55 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/indents")
 @RequiredArgsConstructor
-// Remove @CrossOrigin — CORS is already handled globally in SecurityConfig
 public class IndentController {
 
     private final IndentService indentService;
     private final IndentRepository indentRepository;
 
-    // Nurse/Pharmacist/Admin raises an indent
-    // Username comes from JWT — no more X-User header needed
+    // ── Raise indent ──────────────────────────────────────────────────────────
     @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST', 'NURSE')")
     @PostMapping
     public ResponseEntity<Indent> raiseRequest(
             @RequestBody Indent indent,
-            Authentication auth) {                        // ← injected from JWT automatically
+            Authentication auth) {
         String username = auth.getName();
-        String role = auth.getAuthorities().iterator().next().getAuthority(); // e.g. ROLE_NURSE
+        String role     = auth.getAuthorities().iterator().next().getAuthority();
         return new ResponseEntity<>(
                 indentService.createIndent(indent, username, role),
                 HttpStatus.CREATED
         );
     }
 
-    // Only pharmacist/admin can issue
+    // ── Issue indent (partial supported) ─────────────────────────────────────
     @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     @PutMapping("/issue/{id}")
-    public ResponseEntity<Indent> finalizeIssue(@PathVariable String id) {
-        return ResponseEntity.ok(indentService.issueIndent(id));
+    public ResponseEntity<Indent> finalizeIssue(
+            @PathVariable String id,
+            Authentication auth) {
+        // Pass issuer's username to service for audit trail
+        return ResponseEntity.ok(indentService.issueIndent(id, auth.getName()));
     }
 
-    // All authenticated roles can view
+    // ── Cancel indent (with reason body) ─────────────────────────────────────
+    @PreAuthorize("hasAnyRole('ADMIN', 'NURSE', 'PHARMACIST')")
+    @PutMapping("/cancel/{id}")
+    public ResponseEntity<Indent> cancelIndent(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+
+        String reason = (body != null) ? body.get("reason") : null;
+        return ResponseEntity.ok(indentService.cancelIndent(id, reason, auth.getName()));
+    }
+
+    // ── All indents (admin/pharmacist) ────────────────────────────────────────
+    @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     @GetMapping
     public ResponseEntity<List<Indent>> getAllIndents() {
         return ResponseEntity.ok(
@@ -53,19 +68,24 @@ public class IndentController {
         );
     }
 
-    // Nurse sees only their own indents
+    // ── Nurse: only own indents ───────────────────────────────────────────────
     @PreAuthorize("hasAnyRole('NURSE', 'ADMIN', 'PHARMACIST')")
     @GetMapping("/my")
     public ResponseEntity<List<Indent>> getMyIndents(Authentication auth) {
-        String username = auth.getName();                 // ← from JWT, no header needed
+        String username = auth.getName();
         return ResponseEntity.ok(
                 indentRepository.findAll().stream()
-                        .filter(i -> username.equals(i.getRequestedBy()))
+                        .filter(i -> username.equals(i.getEnteredBy())
+                                || username.equals(i.getRequestedBy())
+                                || (i.getEnteredBy() != null && i.getEnteredBy().equalsIgnoreCase(username))
+                                || (i.getRequestedBy() != null && i.getRequestedBy().equalsIgnoreCase(username)))
                         .sorted((a, b) -> b.getRequestDate().compareTo(a.getRequestDate()))
                         .collect(Collectors.toList())
         );
     }
 
+    // ── Pending only ──────────────────────────────────────────────────────────
+    @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     @GetMapping("/pending")
     public ResponseEntity<List<Indent>> getPendingIndents() {
         return ResponseEntity.ok(
@@ -76,18 +96,5 @@ public class IndentController {
         );
     }
 
-    // Only nurse who owns it or admin can cancel
-    @PreAuthorize("hasAnyRole('ADMIN', 'NURSE', 'PHARMACIST')")
-    @PutMapping("/cancel/{id}")
-    public ResponseEntity<Indent> cancelIndent(
-            @PathVariable String id,
-            Authentication auth) {
-        Indent indent = indentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Indent not found"));
-        if ("ISSUED".equals(indent.getStatus())) {
-            return ResponseEntity.badRequest().build();
-        }
-        indent.setStatus("CANCELLED");
-        return ResponseEntity.ok(indentRepository.save(indent));
-    }
+
 }
