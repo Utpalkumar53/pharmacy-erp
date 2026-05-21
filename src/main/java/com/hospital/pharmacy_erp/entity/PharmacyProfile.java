@@ -28,4 +28,11 @@ public class PharmacyProfile {
     private String invoiceTerms;
     private List<String> unitMaster;
     private List<String> categoryMaster;
+
+    // ── NEW SMTP fields ──────────────────────
+    private String smtpEmail;
+    private String smtpAppPassword;   // will store encrypted
+    private String smtpHost = "smtp.gmail.com";
+    private int smtpPort = 587;
+    private String backupRecipientEmail;
 }

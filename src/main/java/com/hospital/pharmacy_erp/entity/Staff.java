@@ -33,4 +33,7 @@ public class Staff {
 
     private LocalDate joiningDate;
     private boolean active = true;
+
+    // ← ADD THIS ONE LINE:
+    private String username;
 }
