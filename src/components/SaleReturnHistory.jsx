@@ -5,7 +5,7 @@ import {
   PackageOpen, User, Calendar, FileText, Printer, X, Search
 } from 'lucide-react';
 
-// ─── RETURN RECEIPT MODAL (reused from SaleReturn.jsx style) ─────────────────
+// ─── RETURN RECEIPT MODAL ─────────────────────────────────────────────────────
 const ReturnReceipt = ({ returnData, onClose }) => {
   if (!returnData) return null;
   return (
@@ -99,12 +99,12 @@ const ReturnReceipt = ({ returnData, onClose }) => {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const SaleReturnHistory = () => {
-  const [returns, setReturns]           = useState([]);
-  const [filtered, setFiltered]         = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [expandedId, setExpandedId]     = useState(null);
-  const [searchQuery, setSearchQuery]   = useState('');
-  const [receiptData, setReceiptData]   = useState(null);
+  const [returns, setReturns]         = useState([]);
+  const [filtered, setFiltered]       = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [expandedId, setExpandedId]   = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [receiptData, setReceiptData] = useState(null);
 
   const fetchReturns = async () => {
     try {
@@ -122,12 +122,8 @@ const SaleReturnHistory = () => {
 
   useEffect(() => { fetchReturns(); }, []);
 
-  // ── Search/Filter ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFiltered(returns);
-      return;
-    }
+    if (!searchQuery.trim()) { setFiltered(returns); return; }
     const q = searchQuery.trim().toLowerCase();
     setFiltered(returns.filter(r =>
       r.id?.toLowerCase().includes(q) ||
@@ -140,9 +136,8 @@ const SaleReturnHistory = () => {
 
   const toggleExpand = (id) => setExpandedId(prev => prev === id ? null : id);
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const totalRefunded   = returns.reduce((s, r) => s + (r.totalRefundAmount || 0), 0);
-  const totalItemsBack  = returns.reduce((s, r) =>
+  const totalRefunded  = returns.reduce((s, r) => s + (r.totalRefundAmount || 0), 0);
+  const totalItemsBack = returns.reduce((s, r) =>
     s + (r.returnedItems?.reduce((a, i) => a + (i.quantityReturned || 0), 0) || 0), 0);
 
   if (loading) return <div style={loadingStyle}>Loading Return History...</div>;
@@ -155,18 +150,19 @@ const SaleReturnHistory = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <RotateCcw size={28} color="#f87171" />
           <div>
-            <h1 style={{ color: '#f1f5f9', margin: 0, fontSize: '24px' }}>Sale Return History</h1>
+            <h1 style={{ color: '#f1f5f9', margin: 0, fontSize: '22px' }}>Sale Return History</h1>
             <p style={{ color: '#64748b', margin: '2px 0 0', fontSize: '13px' }}>
               All processed refunds and restocked items
             </p>
           </div>
         </div>
         <button onClick={fetchReturns} style={refreshBtn}>
-          <RefreshCw size={16} /> REFRESH
+          <RefreshCw size={16} />
+          <span style={refreshLabel}>REFRESH</span>
         </button>
       </div>
 
-      {/* Stats Bar */}
+      {/* ✅ Stats Bar — wraps to 2×2 grid on mobile */}
       <div style={statsRow}>
         <div style={statCard('#a78bfa')}>
           <span style={statLabel}>Total Returns</span>
@@ -191,7 +187,7 @@ const SaleReturnHistory = () => {
         <Search size={16} color="#64748b" />
         <input
           type="text"
-          placeholder="Search by Return ID, Invoice ID, Customer, Pharmacist, Reason..."
+          placeholder="Search by Return ID, Invoice, Customer, Pharmacist, Reason..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           style={searchInput}
@@ -216,19 +212,19 @@ const SaleReturnHistory = () => {
           filtered.map((ret) => (
             <div key={ret.id} style={returnCard}>
 
-              {/* ── Card Header (always visible) ── */}
+              {/* ✅ Card Header — stacks gracefully on mobile */}
               <div style={cardHeader} onClick={() => toggleExpand(ret.id)}>
 
                 {/* Return Badge + IDs */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                   <div style={returnBadge}>
                     <RotateCcw size={14} color="#f87171" />
                   </div>
-                  <div>
-                    <div style={{ color: '#f1f5f9', fontWeight: 'bold', fontSize: '15px', fontFamily: 'monospace' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: '#f1f5f9', fontWeight: 'bold', fontSize: '14px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       #{ret.id?.substring(0, 8).toUpperCase()}
                     </div>
-                    <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px', whiteSpace: 'nowrap' }}>
                       Invoice:{' '}
                       <span style={{ color: '#60a5fa', fontFamily: 'monospace' }}>
                         #{ret.originalSaleId?.substring(0, 8).toUpperCase()}
@@ -237,30 +233,36 @@ const SaleReturnHistory = () => {
                   </div>
                 </div>
 
-                {/* Meta: customer, date, pharmacist */}
+                {/* Meta: customer, date, pharmacist — hidden label on tiny screens via minWidth */}
                 <div style={metaGroup}>
                   <span style={metaItem}>
                     <User size={13} color="#64748b" />
-                    {ret.customerName || 'Cash Customer'}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ret.customerName || 'Cash Customer'}
+                    </span>
                   </span>
                   <span style={metaItem}>
                     <Calendar size={13} color="#64748b" />
-                    {new Date(ret.returnDate).toLocaleString('en-IN')}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {new Date(ret.returnDate).toLocaleDateString('en-IN')}
+                    </span>
                   </span>
                   <span style={metaItem}>
                     <FileText size={13} color="#64748b" />
-                    {ret.processedBy || 'SYSTEM'}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {ret.processedBy || 'SYSTEM'}
+                    </span>
                   </span>
                 </div>
 
-                {/* Items count + refund + expand */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                {/* Right side: items count, refund, print, chevron */}
+                <div style={cardRight}>
                   <div style={itemCountBadge}>
                     {ret.returnedItems?.length || 0} item(s)
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Refund</div>
-                    <div style={{ color: '#f87171', fontWeight: 'bold', fontSize: '18px' }}>
+                    <div style={{ color: '#f87171', fontWeight: 'bold', fontSize: '17px', whiteSpace: 'nowrap' }}>
                       ₹{ret.totalRefundAmount?.toFixed(2)}
                     </div>
                   </div>
@@ -278,11 +280,10 @@ const SaleReturnHistory = () => {
                 </div>
               </div>
 
-              {/* ── Expanded Details ── */}
+              {/* ✅ Expanded Details */}
               {expandedId === ret.id && (
                 <div style={expandedSection}>
 
-                  {/* Reason */}
                   {ret.reason && (
                     <div style={reasonBox}>
                       <span style={smallLabel}>Reason for Return</span>
@@ -290,45 +291,47 @@ const SaleReturnHistory = () => {
                     </div>
                   )}
 
-                  {/* Returned Items Table */}
                   <div style={{ marginTop: '16px' }}>
                     <span style={smallLabel}>Returned Items</span>
-                    <table style={innerTable}>
-                      <thead>
-                        <tr style={innerHeaderRow}>
-                          <th style={thStyle}>Medicine Name</th>
-                          <th style={{ ...thStyle, textAlign: 'center' }}>Qty Returned</th>
-                          <th style={{ ...thStyle, textAlign: 'right' }}>Unit Price</th>
-                          <th style={{ ...thStyle, textAlign: 'right' }}>Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ret.returnedItems?.map((item, idx) => (
-                          <tr key={idx} style={innerRow}>
-                            <td style={tdStyle}>{item.medicineName}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center' }}>
-                              <span style={qtyBadge}>+{item.quantityReturned}</span>
+                    {/* ✅ FIX: horizontal scroll wrapper for the items table */}
+                    <div style={tableScrollWrapper}>
+                      <table style={innerTable}>
+                        <thead>
+                          <tr style={innerHeaderRow}>
+                            <th style={thStyle}>Medicine Name</th>
+                            <th style={{ ...thStyle, textAlign: 'center' }}>Qty Returned</th>
+                            <th style={{ ...thStyle, textAlign: 'right' }}>Unit Price</th>
+                            <th style={{ ...thStyle, textAlign: 'right' }}>Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ret.returnedItems?.map((item, idx) => (
+                            <tr key={idx} style={innerRow}>
+                              <td style={tdStyle}>{item.medicineName}</td>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <span style={qtyBadge}>+{item.quantityReturned}</span>
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8' }}>
+                                ₹{item.unitPrice?.toFixed(2)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: 'right', color: '#34d399', fontWeight: 'bold' }}>
+                                ₹{item.subTotal?.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan="3" style={{ ...tdStyle, textAlign: 'right', color: '#64748b', fontWeight: 'bold', borderTop: '1px solid #334155', paddingTop: '14px' }}>
+                              TOTAL REFUND
                             </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8' }}>
-                              ₹{item.unitPrice?.toFixed(2)}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', color: '#34d399', fontWeight: 'bold' }}>
-                              ₹{item.subTotal?.toFixed(2)}
+                            <td style={{ ...tdStyle, textAlign: 'right', color: '#f87171', fontWeight: 'bold', fontSize: '16px', borderTop: '1px solid #334155', paddingTop: '14px' }}>
+                              ₹{ret.totalRefundAmount?.toFixed(2)}
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan="3" style={{ ...tdStyle, textAlign: 'right', color: '#64748b', fontWeight: 'bold', borderTop: '1px solid #334155', paddingTop: '14px' }}>
-                            TOTAL REFUND
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', color: '#f87171', fontWeight: 'bold', fontSize: '16px', borderTop: '1px solid #334155', paddingTop: '14px' }}>
-                            ₹{ret.totalRefundAmount?.toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </tfoot>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -337,7 +340,6 @@ const SaleReturnHistory = () => {
         )}
       </div>
 
-      {/* Receipt Modal */}
       {receiptData && (
         <ReturnReceipt returnData={receiptData} onClose={() => setReceiptData(null)} />
       )}
@@ -346,41 +348,77 @@ const SaleReturnHistory = () => {
 };
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
-const pageStyle      = { padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', marginLeft: '240px' };
-const headerFlex     = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
-const refreshBtn     = { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#334155', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
-const loadingStyle   = { height: '100vh', backgroundColor: '#0f172a', color: '#f87171', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px', marginLeft: '240px' };
 
-const statsRow  = { display: 'flex', gap: '16px', marginBottom: '24px' };
-const statCard  = (accent) => ({ flex: 1, backgroundColor: '#1e293b', border: `1px solid #334155`, borderRadius: '12px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: `3px solid ${accent}` });
+// ✅ Responsive page padding — less on mobile
+const pageStyle    = { padding: 'clamp(16px, 4vw, 40px)', backgroundColor: '#0f172a', minHeight: '100vh' };
+const loadingStyle = { height: '100vh', backgroundColor: '#0f172a', color: '#f87171', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' };
+
+const headerFlex = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', gap: '12px', flexWrap: 'wrap' };
+const refreshBtn = { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#334155', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0 };
+// ✅ Hide "REFRESH" text label on very small screens
+const refreshLabel = { display: 'inline' };
+
+// ✅ Stats: wrap to 2×2 on mobile via flex-wrap + min-width
+const statsRow  = { display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' };
+const statCard  = (accent) => ({
+  flex: '1 1 140px',           // ✅ allows wrapping to 2 per row on narrow screens
+  minWidth: '130px',
+  backgroundColor: '#1e293b',
+  border: '1px solid #334155',
+  borderLeft: `3px solid ${accent}`,
+  borderRadius: '12px',
+  padding: '14px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px',
+});
 const statLabel = { color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' };
-const statValue = { fontSize: '26px', fontWeight: 'bold' };
+const statValue = { fontSize: '22px', fontWeight: 'bold' };
 
-const searchWrap  = { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' };
-const searchInput = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', outline: 'none', fontSize: '14px' };
-const clearBtn    = { background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', padding: '2px' };
+const searchWrap  = { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '11px 14px', marginBottom: '16px' };
+const searchInput = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', outline: 'none', fontSize: '14px', minWidth: 0 };
+const clearBtn    = { background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', padding: '2px', flexShrink: 0 };
 
 const listContainer = { display: 'flex', flexDirection: 'column', gap: '10px' };
 const returnCard    = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', overflow: 'hidden' };
-const cardHeader    = { display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 24px', cursor: 'pointer' };
-const returnBadge   = { width: '34px', height: '34px', borderRadius: '8px', backgroundColor: 'rgba(248,113,113,0.1)', border: '1px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
-const metaGroup     = { display: 'flex', gap: '20px', flex: 3, flexWrap: 'wrap' };
-const metaItem      = { display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '13px' };
-const itemCountBadge = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '4px 10px', color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' };
-const printBtnSmall  = { display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#334155', border: 'none', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', color: '#94a3b8' };
 
-const expandedSection = { padding: '0 24px 24px', borderTop: '1px solid #334155' };
+// ✅ Card header: flex-wrap so it stacks on mobile
+const cardHeader = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  padding: 'clamp(12px, 3vw, 18px) clamp(14px, 3vw, 24px)',
+  cursor: 'pointer',
+  flexWrap: 'wrap',
+};
+
+const returnBadge = { width: '34px', height: '34px', borderRadius: '8px', backgroundColor: 'rgba(248,113,113,0.1)', border: '1px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
+
+// ✅ Meta group: wraps on small screens, min-width 0 to prevent overflow
+const metaGroup = { display: 'flex', gap: '12px 20px', flex: '1 1 200px', flexWrap: 'wrap', minWidth: 0 };
+const metaItem  = { display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '13px', minWidth: 0 };
+
+// ✅ Right side group: stays together, shrinks last
+const cardRight = { display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto', flexShrink: 0 };
+
+const itemCountBadge = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '4px 10px', color: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' };
+const printBtnSmall  = { display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#334155', border: 'none', borderRadius: '6px', width: '30px', height: '30px', cursor: 'pointer', color: '#94a3b8', flexShrink: 0 };
+
+// ✅ Expanded section: responsive padding
+const expandedSection = { padding: '0 clamp(14px, 3vw, 24px) clamp(14px, 3vw, 24px)', borderTop: '1px solid #334155' };
 const reasonBox       = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '14px', marginTop: '20px' };
 const smallLabel      = { color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '8px' };
 
-const innerTable     = { width: '100%', borderCollapse: 'collapse', marginTop: '8px' };
-const innerHeaderRow = { borderBottom: '1px solid #334155' };
-const thStyle        = { color: '#64748b', fontSize: '12px', textTransform: 'uppercase', padding: '10px 12px', textAlign: 'left', letterSpacing: '0.5px' };
-const innerRow       = { borderBottom: '1px solid rgba(51,65,85,0.5)' };
-const tdStyle        = { color: '#cbd5e1', fontSize: '14px', padding: '12px' };
-const qtyBadge       = { backgroundColor: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid #8b5cf6', borderRadius: '5px', padding: '2px 10px', fontSize: '13px', fontWeight: 'bold' };
+// ✅ Inner table: horizontal scroll on mobile
+const tableScrollWrapper = { overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginTop: '8px' };
+const innerTable         = { width: '100%', minWidth: '420px', borderCollapse: 'collapse' };
+const innerHeaderRow     = { borderBottom: '1px solid #334155' };
+const thStyle            = { color: '#64748b', fontSize: '12px', textTransform: 'uppercase', padding: '10px 12px', textAlign: 'left', letterSpacing: '0.5px', whiteSpace: 'nowrap' };
+const innerRow           = { borderBottom: '1px solid rgba(51,65,85,0.5)' };
+const tdStyle            = { color: '#cbd5e1', fontSize: '14px', padding: '11px 12px' };
+const qtyBadge           = { backgroundColor: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid #8b5cf6', borderRadius: '5px', padding: '2px 10px', fontSize: '13px', fontWeight: 'bold' };
 
-const emptyState     = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px', backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155' };
+const emptyState = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center' };
 
 // Receipt modal styles
 const overlayStyle     = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 };

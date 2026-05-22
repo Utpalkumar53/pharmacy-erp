@@ -101,18 +101,15 @@ const ReturnReceipt = ({ returnData, onClose }) => {
 
 // ─── MAIN SALE RETURN COMPONENT ───────────────────────────────────────────────
 const SaleReturn = () => {
-  // Search state
-  const [searchMode, setSearchMode]       = useState('invoice'); // 'invoice' | 'customer'
+  const [searchMode, setSearchMode]       = useState('invoice');
   const [searchQuery, setSearchQuery]     = useState('');
-  const [searchResults, setSearchResults] = useState([]); // list of sales (for customer search)
+  const [searchResults, setSearchResults] = useState([]);
   const [selectedSale, setSelectedSale]   = useState(null);
 
-  // Return form state
-  const [returnItems, setReturnItems]     = useState([]); // items with qty to return
+  const [returnItems, setReturnItems]     = useState([]);
   const [reason, setReason]               = useState('');
   const [pharmacist, setPharmacist]       = useState('');
 
-  // UI state
   const [loading, setLoading]             = useState(false);
   const [searching, setSearching]         = useState(false);
   const [error, setError]                 = useState('');
@@ -127,7 +124,6 @@ const SaleReturn = () => {
     setSelectedSale(null);
     setSearchResults([]);
     try {
-      // Try matching full ID or prefix
       const res = await api.get('/sales');
       const all = res.data || [];
       const match = all.find(s =>
@@ -176,7 +172,6 @@ const SaleReturn = () => {
   const loadSaleForReturn = (sale) => {
     setSelectedSale(sale);
     setSearchResults([]);
-    // Initialize return items — all unchecked, qty = 0
     setReturnItems(
       sale.saleItems?.map(item => ({
         medicineId: item.medicineId,
@@ -215,7 +210,6 @@ const SaleReturn = () => {
     }));
   };
 
-  // ── Calculate total refund ────────────────────────────────────────────────
   const totalRefund = returnItems
     .filter(i => i.selected)
     .reduce((sum, i) => sum + i.subTotal, 0);
@@ -248,7 +242,6 @@ const SaleReturn = () => {
 
       setReturnReceipt(res.data);
       setSuccess(`Return processed! Refund: ₹${res.data.totalRefundAmount?.toFixed(2)}`);
-      // Reset form
       setSelectedSale(null);
       setReturnItems([]);
       setSearchQuery('');
@@ -273,7 +266,7 @@ const SaleReturn = () => {
         </div>
       </div>
 
-      {/* Success / Error banners */}
+      {/* Banners */}
       {success && (
         <div style={bannerStyle('#052e16', '#16a34a', '#4ade80')}>
           <CheckCircle size={18} /> {success}
@@ -290,7 +283,7 @@ const SaleReturn = () => {
         <h2 style={sectionTitle}><span style={stepBadge}>1</span> Find Original Bill</h2>
 
         {/* Mode Toggle */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <button
             onClick={() => { setSearchMode('invoice'); setSearchQuery(''); setSearchResults([]); setSelectedSale(null); setError(''); }}
             style={modeBtn(searchMode === 'invoice')}
@@ -306,7 +299,7 @@ const SaleReturn = () => {
         </div>
 
         {/* Search Input */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <div style={searchWrap}>
             <Search size={18} color="#94a3b8" />
             <input
@@ -340,14 +333,14 @@ const SaleReturn = () => {
                   onClick={() => loadSaleForReturn(sale)}
                   style={resultRowStyle}
                 >
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <span style={{ color: '#60a5fa', fontFamily: 'monospace', fontWeight: 'bold' }}>
                       {sale.id?.substring(0, 8).toUpperCase()}
                     </span>
-                    <span style={{ color: '#cbd5e1', marginLeft: '16px' }}>
+                    <span style={{ color: '#cbd5e1' }}>
                       {sale.customerName || 'Cash Customer'}
                     </span>
-                    <span style={{ color: '#94a3b8', marginLeft: '16px', fontSize: '12px' }}>
+                    <span style={{ color: '#94a3b8', fontSize: '12px' }}>
                       {sale.saleDate ? new Date(sale.saleDate).toLocaleDateString('en-IN') : 'N/A'}
                     </span>
                   </div>
@@ -374,7 +367,7 @@ const SaleReturn = () => {
 
           {/* Original Bill Info */}
           <div style={infoBoxStyle}>
-            <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <span><span style={labelStyle}>Invoice:</span> <span style={{ color: '#60a5fa', fontFamily: 'monospace' }}>{selectedSale.id?.substring(0, 8).toUpperCase()}</span></span>
               <span><span style={labelStyle}>Customer:</span> <span style={{ color: '#f1f5f9' }}>{selectedSale.customerName || 'Cash Customer'}</span></span>
               <span><span style={labelStyle}>Date:</span> <span style={{ color: '#f1f5f9' }}>{selectedSale.saleDate ? new Date(selectedSale.saleDate).toLocaleDateString('en-IN') : 'N/A'}</span></span>
@@ -388,59 +381,61 @@ const SaleReturn = () => {
             </div>
           </div>
 
-          {/* Items Checklist */}
-          <table style={tableStyle}>
-            <thead>
-              <tr style={theadRow}>
-                <th style={{ ...th, width: '5%' }}>✓</th>
-                <th style={{ ...th, width: '35%' }}>Medicine</th>
-                <th style={{ ...th, textAlign: 'right', width: '20%' }}>Unit Price</th>
-                <th style={{ ...th, textAlign: 'center', width: '15%' }}>Sold Qty</th>
-                <th style={{ ...th, textAlign: 'center', width: '15%' }}>Return Qty</th>
-                <th style={{ ...th, textAlign: 'right', width: '10%' }}>Refund</th>
-              </tr>
-            </thead>
-            <tbody>
-              {returnItems.map((item, index) => (
-                <tr key={index} style={{ ...rowStyle, backgroundColor: item.selected ? 'rgba(248,113,113,0.07)' : 'transparent' }}>
-                  <td style={{ padding: '12px 10px' }}>
-                    <input
-                      type="checkbox"
-                      checked={item.selected}
-                      onChange={() => toggleItem(index)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f87171' }}
-                    />
-                  </td>
-                  <td style={{ padding: '12px 10px', fontWeight: 'bold', color: '#f1f5f9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Package size={14} color="#94a3b8" />
-                      {item.medicineName}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 10px', textAlign: 'right', color: '#94a3b8' }}>
-                    ₹{item.unitPrice?.toFixed(2)}
-                  </td>
-                  <td style={{ padding: '12px 10px', textAlign: 'center', color: '#94a3b8' }}>
-                    {item.maxQty}
-                  </td>
-                  <td style={{ padding: '12px 10px', textAlign: 'center' }}>
-                    {item.selected ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <button onClick={() => updateQty(index, item.quantityReturned - 1)} style={qtyBtn}>−</button>
-                        <span style={{ color: '#f1f5f9', minWidth: '24px', textAlign: 'center' }}>{item.quantityReturned}</span>
-                        <button onClick={() => updateQty(index, item.quantityReturned + 1)} style={qtyBtn}>+</button>
-                      </div>
-                    ) : (
-                      <span style={{ color: '#475569' }}>—</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px 10px', textAlign: 'right', color: item.selected ? '#f87171' : '#475569', fontWeight: item.selected ? 'bold' : 'normal' }}>
-                    {item.selected ? `₹${item.subTotal.toFixed(2)}` : '—'}
-                  </td>
+          {/* ✅ FIX: Items table wrapped for horizontal scroll on mobile */}
+          <div style={tableScrollWrapper}>
+            <table style={tableStyle}>
+              <thead>
+                <tr style={theadRow}>
+                  <th style={{ ...th, width: '5%' }}>✓</th>
+                  <th style={{ ...th, width: '35%' }}>Medicine</th>
+                  <th style={{ ...th, textAlign: 'right', width: '20%' }}>Unit Price</th>
+                  <th style={{ ...th, textAlign: 'center', width: '15%' }}>Sold Qty</th>
+                  <th style={{ ...th, textAlign: 'center', width: '15%' }}>Return Qty</th>
+                  <th style={{ ...th, textAlign: 'right', width: '10%' }}>Refund</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {returnItems.map((item, index) => (
+                  <tr key={index} style={{ ...rowStyle, backgroundColor: item.selected ? 'rgba(248,113,113,0.07)' : 'transparent' }}>
+                    <td style={{ padding: '12px 10px' }}>
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => toggleItem(index)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f87171' }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 10px', fontWeight: 'bold', color: '#f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Package size={14} color="#94a3b8" />
+                        {item.medicineName}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right', color: '#94a3b8' }}>
+                      ₹{item.unitPrice?.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '12px 10px', textAlign: 'center', color: '#94a3b8' }}>
+                      {item.maxQty}
+                    </td>
+                    <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                      {item.selected ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <button onClick={() => updateQty(index, item.quantityReturned - 1)} style={qtyBtn}>−</button>
+                          <span style={{ color: '#f1f5f9', minWidth: '24px', textAlign: 'center' }}>{item.quantityReturned}</span>
+                          <button onClick={() => updateQty(index, item.quantityReturned + 1)} style={qtyBtn}>+</button>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#475569' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right', color: item.selected ? '#f87171' : '#475569', fontWeight: item.selected ? 'bold' : 'normal' }}>
+                      {item.selected ? `₹${item.subTotal.toFixed(2)}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Refund Total */}
           {selectedCount > 0 && (
@@ -459,7 +454,7 @@ const SaleReturn = () => {
         <div style={cardStyle}>
           <h2 style={sectionTitle}><span style={stepBadge}>3</span> Return Details & Confirm</h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
             <div>
               <label style={labelStyle}>Reason for Return *</label>
               <select
@@ -491,7 +486,7 @@ const SaleReturn = () => {
 
           {/* Summary Box */}
           <div style={summaryBox}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <p style={{ margin: '0 0 6px', color: '#94a3b8', fontSize: '13px' }}>Return Summary</p>
                 <p style={{ margin: '0 0 4px', color: '#f1f5f9' }}>
@@ -523,6 +518,7 @@ const SaleReturn = () => {
               padding: '14px',
               fontSize: '15px',
               marginTop: '16px',
+              justifyContent: 'center',
               opacity: selectedCount === 0 ? 0.5 : 1,
               cursor: selectedCount === 0 ? 'not-allowed' : 'pointer',
             }}
@@ -542,32 +538,36 @@ const SaleReturn = () => {
 };
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
-const pageStyle      = { padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', marginLeft: '240px' };
-const headerFlex     = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
-const cardStyle      = { backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', padding: '28px', marginBottom: '20px' };
-const sectionTitle   = { color: '#f1f5f9', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '10px' };
-const stepBadge      = { backgroundColor: '#f87171', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 };
-const searchWrap     = { flex: 1, display: 'flex', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px 14px', gap: '10px' };
-const inputStyle     = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', outline: 'none', fontSize: '14px' };
-const infoBoxStyle   = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', fontSize: '14px', color: '#94a3b8' };
-const tableStyle     = { width: '100%', borderCollapse: 'collapse' };
-const theadRow       = { color: '#64748b', fontSize: '12px', textTransform: 'uppercase', borderBottom: '1px solid #334155' };
-const th             = { padding: '10px', textAlign: 'left', fontWeight: '600' };
-const rowStyle       = { borderBottom: '1px solid #1e293b', transition: 'background 0.15s' };
-const refundTotalBox = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #f87171', borderRadius: '10px', padding: '14px 18px', marginTop: '16px' };
-const summaryBox     = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '18px' };
-const labelStyle     = { color: '#94a3b8', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-const fieldStyle     = { width: '100%', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px 14px', color: '#f1f5f9', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
-const selectStyle    = { ...fieldStyle, cursor: 'pointer' };
-const resultRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '12px 16px', cursor: 'pointer', transition: 'border-color 0.2s' };
-const payBadge       = { padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold' };
-const payColor       = (m) => m === 'UPI' ? { backgroundColor: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid #3b82f6' } : m === 'CREDIT' ? { backgroundColor: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid #f59e0b' } : { backgroundColor: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid #10b981' };
-const qtyBtn         = { backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '5px', width: '26px', height: '26px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const modeBtn        = (active) => ({ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', border: `1px solid ${active ? '#f87171' : '#334155'}`, backgroundColor: active ? 'rgba(248,113,113,0.1)' : 'transparent', color: active ? '#f87171' : '#94a3b8', cursor: 'pointer', fontWeight: active ? 'bold' : 'normal', fontSize: '13px' });
-const btnStyle       = (bg) => ({ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: bg, color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' });
-const bannerStyle    = (bg, border, color) => ({ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: bg, border: `1px solid ${border}`, color, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '14px' });
-const overlayStyle   = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 };
+const pageStyle        = { padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh' };
+const headerFlex       = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
+const cardStyle        = { backgroundColor: '#1e293b', borderRadius: '16px', border: '1px solid #334155', padding: '28px', marginBottom: '20px' };
+const sectionTitle     = { color: '#f1f5f9', fontSize: '16px', fontWeight: 'bold', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '10px' };
+const stepBadge        = { backgroundColor: '#f87171', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 };
+const searchWrap       = { flex: 1, display: 'flex', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px 14px', gap: '10px', minWidth: '0' };
+const inputStyle       = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', outline: 'none', fontSize: '14px' };
+const infoBoxStyle     = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', fontSize: '14px', color: '#94a3b8' };
+
+// ✅ FIX: horizontal scroll wrapper for the items table
+const tableScrollWrapper = { overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tableStyle       = { width: '100%', minWidth: '580px', borderCollapse: 'collapse' };
+
+const theadRow         = { color: '#64748b', fontSize: '12px', textTransform: 'uppercase', borderBottom: '1px solid #334155' };
+const th               = { padding: '10px', textAlign: 'left', fontWeight: '600' };
+const rowStyle         = { borderBottom: '1px solid #1e293b', transition: 'background 0.15s' };
+const refundTotalBox   = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #f87171', borderRadius: '10px', padding: '14px 18px', marginTop: '16px', flexWrap: 'wrap', gap: '10px' };
+const summaryBox       = { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '18px' };
+const labelStyle       = { color: '#94a3b8', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
+const fieldStyle       = { width: '100%', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px 14px', color: '#f1f5f9', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
+const selectStyle      = { ...fieldStyle, cursor: 'pointer' };
+const resultRowStyle   = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '12px 16px', cursor: 'pointer', transition: 'border-color 0.2s', flexWrap: 'wrap', gap: '8px' };
+const payBadge         = { padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold' };
+const payColor         = (m) => m === 'UPI' ? { backgroundColor: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid #3b82f6' } : m === 'CREDIT' ? { backgroundColor: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid #f59e0b' } : { backgroundColor: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid #10b981' };
+const qtyBtn           = { backgroundColor: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '5px', width: '26px', height: '26px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const modeBtn          = (active) => ({ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', border: `1px solid ${active ? '#f87171' : '#334155'}`, backgroundColor: active ? 'rgba(248,113,113,0.1)' : 'transparent', color: active ? '#f87171' : '#94a3b8', cursor: 'pointer', fontWeight: active ? 'bold' : 'normal', fontSize: '13px' });
+const btnStyle         = (bg) => ({ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: bg, color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' });
+const bannerStyle      = (bg, border, color) => ({ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: bg, border: `1px solid ${border}`, color, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '14px' });
+const overlayStyle     = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 };
 const receiptCardStyle = { backgroundColor: '#1e293b', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' };
-const printAreaStyle = { backgroundColor: 'white', color: 'black', padding: '24px', borderRadius: '4px', fontFamily: 'monospace' };
+const printAreaStyle   = { backgroundColor: 'white', color: 'black', padding: '24px', borderRadius: '4px', fontFamily: 'monospace' };
 
 export default SaleReturn;

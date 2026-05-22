@@ -7,7 +7,7 @@ import {
   Pill, Building2, FileText, Stethoscope, Zap, GitMerge
 } from 'lucide-react';
 
-// ─── Status Config (added PARTIALLY_ISSUED) ──────────────────────────────────
+// ─── Status Config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
   PENDING:          { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  icon: Clock,        label: 'Pending'          },
@@ -93,19 +93,25 @@ const IndentRow = ({ indent, onCancel, onIssue, canManage, canCancel }) => {
   return (
     <>
       <tr
-        style={{ borderBottom: '1px solid #1e293b', cursor: 'pointer', transition: 'background 0.15s' }}
+        className="indent-row"
         onClick={() => setExpanded(p => !p)}
         onMouseEnter={e => e.currentTarget.style.background = 'rgba(96,165,250,0.04)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        <td style={td}>{expanded ? <ChevronUp size={14} color="#60a5fa"/> : <ChevronDown size={14} color="#475569"/>}</td>
+        <td style={td} className="indent-col-chevron">
+          {expanded ? <ChevronUp size={14} color="#60a5fa"/> : <ChevronDown size={14} color="#475569"/>}
+        </td>
         <td style={td}>
           <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#60a5fa', fontWeight: 600 }}>
             {indent.indentNumber || '#' + indent.id?.slice(-6).toUpperCase()}
           </span>
         </td>
-        <td style={td}><span style={{ color: '#e2e8f0', fontWeight: 500 }}>{indent.wardName}</span></td>
-        <td style={td}><span style={{ color: '#94a3b8' }}>{indent.requestedBy}</span></td>
+        <td style={td} className="indent-col-ward">
+          <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{indent.wardName}</span>
+        </td>
+        <td style={td} className="indent-col-requested">
+          <span style={{ color: '#94a3b8' }}>{indent.requestedBy}</span>
+        </td>
         <td style={td}>
           {indent.emergency && <Zap size={13} color="#f59e0b" fill="#f59e0b" style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
           <StatusBadge status={indent.status} />
@@ -115,19 +121,21 @@ const IndentRow = ({ indent, onCancel, onIssue, canManage, canCancel }) => {
             </span>
           )}
         </td>
-        <td style={td}><span style={{ color: '#64748b', fontSize: '13px' }}>{fmt(indent.requestDate)}</span></td>
+        <td style={td} className="indent-col-date">
+          <span style={{ color: '#64748b', fontSize: '13px' }}>{fmt(indent.requestDate)}</span>
+        </td>
         <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {canManage && (indent.status === 'PENDING' || indent.status === 'PARTIALLY_ISSUED') && (
               <button onClick={() => onIssue(indent.id)}
                 style={{ ...actionBtn, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-                <CheckCircle size={13} /> Issue
+                <CheckCircle size={13} /> <span className="indent-btn-label">Issue</span>
               </button>
             )}
             {canCancel && (indent.status === 'PENDING' || indent.status === 'PARTIALLY_ISSUED') && (
               <button onClick={() => onCancel(indent.id)}
                 style={{ ...actionBtn, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-                <X size={13} /> Cancel
+                <X size={13} /> <span className="indent-btn-label">Cancel</span>
               </button>
             )}
           </div>
@@ -136,9 +144,9 @@ const IndentRow = ({ indent, onCancel, onIssue, canManage, canCancel }) => {
 
       {expanded && (
         <tr style={{ background: 'rgba(15,23,42,0.6)' }}>
-          <td colSpan={7} style={{ padding: '16px 24px' }}>
+          <td colSpan={7} style={{ padding: '16px' }}>
             {/* Meta info grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '14px' }}>
+            <div className="indent-meta-grid">
               {indent.authorizedByDoctor && <InfoChip icon={<Stethoscope size={13}/>} label="Authorized By" value={indent.authorizedByDoctor} />}
               {indent.referenceNote      && <InfoChip icon={<FileText size={13}/>}    label="Reference Note" value={indent.referenceNote} />}
               {indent.enteredBy         && <InfoChip icon={<Building2 size={13}/>}   label="Entered By" value={indent.enteredBy} />}
@@ -161,38 +169,40 @@ const IndentRow = ({ indent, onCancel, onIssue, canManage, canCancel }) => {
 
             {/* Items table */}
             {indent.items?.length > 0 && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                    {['Medicine', 'Batch', 'Qty Requested', 'Qty Issued', 'Qty Pending', 'Unit Price', 'Total', 'Status'].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', color: '#475569', fontWeight: 600,
-                        textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {indent.items.map((item, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #0f172a' }}>
-                      <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>{item.medicineName}</td>
-                      <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace', fontSize: '11px' }}>{item.batchNo || '—'}</td>
-                      <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.quantityRequested}</td>
-                      <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 600 }}>{item.quantityIssued ?? '—'}</td>
-                      <td style={{ padding: '8px 12px', color: item.quantityPending > 0 ? '#f59e0b' : '#475569' }}>
-                        {item.quantityPending > 0 ? item.quantityPending : '—'}
-                      </td>
-                      <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.unitPriceAtIssue != null ? `₹${item.unitPriceAtIssue}` : '—'}</td>
-                      <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.totalValue != null ? `₹${item.totalValue}` : '—'}</td>
-                      <td style={{ padding: '8px 12px' }}>
-                        {item.itemStatus && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: ITEM_STATUS_COLOR[item.itemStatus] || '#475569' }}>
-                            {item.itemStatus}
-                          </span>
-                        )}
-                      </td>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '560px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                      {['Medicine', 'Batch', 'Qty Req.', 'Qty Issued', 'Qty Pending', 'Unit Price', 'Total', 'Status'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', color: '#475569', fontWeight: 600,
+                          textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {indent.items.map((item, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #0f172a' }}>
+                        <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>{item.medicineName}</td>
+                        <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace', fontSize: '11px' }}>{item.batchNo || '—'}</td>
+                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.quantityRequested}</td>
+                        <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 600 }}>{item.quantityIssued ?? '—'}</td>
+                        <td style={{ padding: '8px 12px', color: item.quantityPending > 0 ? '#f59e0b' : '#475569' }}>
+                          {item.quantityPending > 0 ? item.quantityPending : '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.unitPriceAtIssue != null ? `₹${item.unitPriceAtIssue}` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{item.totalValue != null ? `₹${item.totalValue}` : '—'}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          {item.itemStatus && (
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: ITEM_STATUS_COLOR[item.itemStatus] || '#475569' }}>
+                              {item.itemStatus}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </td>
         </tr>
@@ -217,10 +227,10 @@ const WARDS = ['ICU', 'Emergency', 'OPD', 'General Ward', 'Maternity', 'Paediatr
 const ORDER_SOURCES = ['NURSE_APP', 'DOCTOR_VERBAL', 'PHYSICAL_REGISTER'];
 
 const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
-  const [medicines, setMedicines]     = useState([]);
-  const [loadingMeds, setLoadingMeds] = useState(true);
-  const [submitting, setSubmitting]   = useState(false);
-  const [error, setError]             = useState('');
+  const [medicines, setMedicines]         = useState([]);
+  const [loadingMeds, setLoadingMeds]     = useState(true);
+  const [submitting, setSubmitting]       = useState(false);
+  const [error, setError]                 = useState('');
   const [stockWarnings, setStockWarnings] = useState({});
 
   const [form, setForm] = useState({
@@ -248,13 +258,9 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
         const med = medicines.find(m => (m.id || m._id) === val);
         if (med) {
           updated[idx].medicineName = med.name;
-          // Live stock warning
           const qty = updated[idx].quantityRequested || 1;
           if (med.stockQuantity < qty) {
-            setStockWarnings(prev => ({
-              ...prev,
-              [idx]: `Only ${med.stockQuantity} in stock`
-            }));
+            setStockWarnings(prev => ({ ...prev, [idx]: `Only ${med.stockQuantity} in stock` }));
           } else {
             setStockWarnings(prev => { const n = {...prev}; delete n[idx]; return n; });
           }
@@ -305,7 +311,7 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(96,165,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(96,165,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <ClipboardList size={18} color="#60a5fa" />
             </div>
             <div>
@@ -313,7 +319,7 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
               <div style={{ color: '#475569', fontSize: '12px', marginTop: '2px' }}>Submit a medicine request</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
@@ -329,14 +335,14 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
             {form.emergency ? '⚡ Emergency Indent' : 'Mark as Emergency'}
           </span>
           <div style={{ marginLeft: 'auto', width: '36px', height: '20px', borderRadius: '10px',
-            background: form.emergency ? '#f59e0b' : '#334155', position: 'relative', transition: 'background 0.2s' }}>
+            background: form.emergency ? '#f59e0b' : '#334155', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '3px', left: form.emergency ? '18px' : '3px',
               width: '14px', height: '14px', borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
           </div>
         </div>
 
         {/* Form fields */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
+        <div className="indent-form-grid">
           <div style={formGroup}>
             <label style={formLabel}>Ward *</label>
             <select style={formInput} value={form.wardName} onChange={e => setField('wardName', e.target.value)}>
@@ -378,8 +384,8 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
             {items.map((item, idx) => (
               <div key={idx} style={{ padding: '12px', background: 'rgba(15,23,42,0.6)', borderRadius: '8px',
                 border: `1px solid ${stockWarnings[idx] ? 'rgba(245,158,11,0.4)' : '#1e293b'}` }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 36px', gap: '10px', alignItems: 'center' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px' }}>
+                <div className="indent-item-row">
+                  <div className="indent-item-selects">
                     {loadingMeds ? (
                       <input style={formInput} placeholder="Loading medicines..." disabled />
                     ) : (
@@ -392,27 +398,26 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
                         ))}
                       </select>
                     )}
-                    <input type="number" min={1} style={{ ...formInput, width: '80px' }}
+                    <input type="number" min={1} style={{ ...formInput, width: '80px', flexShrink: 0 }}
                       value={item.quantityRequested}
                       onChange={e => setItem(idx, 'quantityRequested', parseInt(e.target.value) || 1)} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '12px' }}>
-                    <Pill size={13} color="#60a5fa" />
-                    <span>x{item.quantityRequested}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <Pill size={13} color="#60a5fa" /> x{item.quantityRequested}
+                    </span>
+                    {items.length > 1 && (
+                      <button onClick={() => removeItem(idx)}
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                          color: '#ef4444', borderRadius: '6px', width: '28px', height: '28px',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(idx)}
-                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                        color: '#ef4444', borderRadius: '6px', width: '28px', height: '28px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                      <X size={13} />
-                    </button>
-                  )}
                 </div>
-                {/* Per-item stock warning */}
                 {stockWarnings[idx] && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
-                    color: '#f59e0b', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', color: '#f59e0b', fontSize: '12px' }}>
                     <AlertTriangle size={12} /> {stockWarnings[idx]} — indent will be partially issued
                   </div>
                 )}
@@ -421,7 +426,7 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
           </div>
         </div>
 
-        {/* Global stock warning banner */}
+        {/* Global stock warning */}
         {hasWarnings && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 14px',
             background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
@@ -439,7 +444,7 @@ const RaiseIndentModal = ({ onClose, onSuccess, currentUser }) => {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button onClick={onClose} style={{ padding: '10px 20px', background: 'none', border: '1px solid #334155', color: '#94a3b8', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
             Cancel
           </button>
@@ -467,13 +472,13 @@ const Indents = () => {
   const canManage    = isPharmacist || isAdmin;
   const canRaise     = isNurse || canManage;
 
-  const [indents, setIndents]         = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [showModal, setShowModal]     = useState(false);
-  const [cancelTarget, setCancelTarget] = useState(null); // id of indent being cancelled
-  const [filterStatus, setFilter]     = useState('ALL');
-  const [toast, setToast]             = useState(null);
+  const [indents, setIndents]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [showModal, setShowModal]       = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [filterStatus, setFilter]       = useState('ALL');
+  const [toast, setToast]               = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -532,7 +537,8 @@ const Indents = () => {
   };
 
   return (
-    <div style={page}>
+    <div className="indent-page">
+
       {/* Toast */}
       {toast && (
         <div style={{
@@ -549,17 +555,17 @@ const Indents = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
+      {/* ── Header ── */}
+      <div className="indent-header">
         <div>
           <h1 style={{ color: '#f1f5f9', fontSize: '24px', fontWeight: 800, margin: 0 }}>
             {isNurse ? 'My Indents' : 'Indent Management'}
           </h1>
-          <p style={{ color: '#475569', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: '#475569', fontSize: '14px', marginTop: '6px', marginBottom: 0 }}>
             {isNurse ? 'Track your medicine requests and their status' : 'Review and process ward medicine indent requests'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="indent-header-btns">
           <button onClick={fetchIndents} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', background: 'rgba(96,165,250,0.08)', border: '1px solid #334155', color: '#94a3b8', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
             <RefreshCw size={14} /> Refresh
           </button>
@@ -571,8 +577,8 @@ const Indents = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+      {/* ── Stats ── */}
+      <div className="indent-stats-grid">
         {[
           { label: 'Total',     value: stats.total,     color: '#60a5fa' },
           { label: 'Pending',   value: stats.pending,   color: '#f59e0b' },
@@ -588,8 +594,8 @@ const Indents = () => {
         ))}
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      {/* ── Filter tabs ── */}
+      <div className="indent-filter-row">
         {[
           { key: 'ALL',              label: `All (${stats.total})` },
           { key: 'PENDING',          label: `Pending (${stats.pending})` },
@@ -602,13 +608,14 @@ const Indents = () => {
               cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.15s',
               background: filterStatus === f.key ? 'rgba(96,165,250,0.15)' : 'rgba(30,41,59,0.5)',
               color: filterStatus === f.key ? '#60a5fa' : '#64748b',
-              borderColor: filterStatus === f.key ? 'rgba(96,165,250,0.4)' : '#1e293b' }}>
+              borderColor: filterStatus === f.key ? 'rgba(96,165,250,0.4)' : '#1e293b',
+              whiteSpace: 'nowrap' }}>
             {f.label}
           </button>
         ))}
       </div>
 
-      {/* Table */}
+      {/* ── Table ── */}
       <div style={{ background: '#1e293b', borderRadius: '14px', border: '1px solid #334155', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: '#475569' }}>
@@ -627,16 +634,16 @@ const Indents = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '600px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #334155', background: 'rgba(15,23,42,0.4)' }}>
-                  <th style={th}></th>
+                  <th style={th} className="indent-col-chevron"></th>
                   <th style={th}>Indent No.</th>
-                  <th style={th}>Ward</th>
-                  <th style={th}>Requested By</th>
+                  <th style={th} className="indent-col-ward">Ward</th>
+                  <th style={th} className="indent-col-requested">Requested By</th>
                   <th style={th}>Status</th>
-                  <th style={th}>Date</th>
+                  <th style={th} className="indent-col-date">Date</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -676,9 +683,162 @@ const Indents = () => {
       )}
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin    { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes fadeIn  { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         select option { background: #1e293b; color: #e2e8f0; }
+
+        /* ── Page ── */
+        .indent-page {
+          padding: 32px;
+          min-height: 100vh;
+          background-color: #0f172a;
+          box-sizing: border-box;
+        }
+
+        /* ── Header ── */
+        .indent-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 28px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .indent-header-btns {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        /* ── Stats: auto-fit ── */
+        .indent-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          gap: 14px;
+          margin-bottom: 24px;
+        }
+
+        /* ── Filter tabs ── */
+        .indent-filter-row {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        /* ── Table row ── */
+        .indent-row {
+          border-bottom: 1px solid #1e293b;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+
+        /* ── Expanded meta grid: 3-col desktop ── */
+        .indent-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 14px;
+        }
+
+        /* ── Modal form: 2-col desktop ── */
+        .indent-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        /* ── Medicine item row ── */
+        .indent-item-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .indent-item-selects {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 10px;
+          flex: 1;
+          min-width: 0;
+        }
+
+        /* ════════════════════════════════
+           TABLET  (≤ 900px)
+        ════════════════════════════════ */
+        @media (max-width: 900px) {
+          .indent-page {
+            padding: 24px 16px;
+          }
+          .indent-meta-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          /* Hide less-critical columns */
+          .indent-col-requested {
+            display: none;
+          }
+        }
+
+        /* ════════════════════════════════
+           MOBILE  (≤ 480px)
+        ════════════════════════════════ */
+        @media (max-width: 480px) {
+          .indent-page {
+            padding: 14px 12px;
+          }
+          .indent-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .indent-header-btns {
+            width: 100%;
+          }
+          .indent-header-btns button {
+            flex: 1;
+            justify-content: center;
+          }
+          .indent-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+          }
+          .indent-stats-grid > div {
+            padding: 12px;
+          }
+          .indent-stats-grid > div > div:last-child {
+            font-size: 22px !important;
+          }
+          .indent-meta-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+          }
+          .indent-form-grid {
+            grid-template-columns: 1fr;
+          }
+          .indent-form-grid > div[style*="1 / -1"] {
+            grid-column: 1 !important;
+          }
+          /* Hide date + ward columns on mobile — keep indent#, status, actions */
+          .indent-col-date,
+          .indent-col-ward,
+          .indent-col-chevron {
+            display: none;
+          }
+          /* Shrink action button labels on very small screens */
+          .indent-btn-label {
+            display: none;
+          }
+          .indent-filter-row button {
+            font-size: 12px;
+            padding: 6px 10px;
+          }
+          .indent-item-selects {
+            grid-template-columns: 1fr;
+          }
+          .indent-item-selects input[type="number"] {
+            width: 100% !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -686,14 +846,13 @@ const Indents = () => {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const page      = { padding: '32px', minHeight: '100vh', backgroundColor: '#0f172a', marginLeft: '240px' };
 const th        = { padding: '12px 16px', textAlign: 'left', color: '#475569', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.7px' };
 const td        = { padding: '14px 16px', verticalAlign: 'middle' };
 const actionBtn = { display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' };
 const formGroup = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const formLabel = { color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' };
 const formInput = { background: 'rgba(15,23,42,0.8)', border: '1px solid #334155', borderRadius: '8px', color: '#e2e8f0', padding: '10px 12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' };
-const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' };
-const modalBox = { background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' };
+const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' };
+const modalBox     = { background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' };
 
 export default Indents;

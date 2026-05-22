@@ -8,7 +8,23 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
 PieChart, Pie, Cell } from 'recharts';
 
+// ─── Responsive hook ──────────────────────────────────────────────────────────
+const useWindowWidth = () => {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return width;
+};
+
 const Dashboard = ({ onNavigate }) => {
+    const width = useWindowWidth();
+    const isMobile  = width < 640;
+    const isTablet  = width >= 640 && width < 1024;
+    const isDesktop = width >= 1024;
+
     const [loading, setLoading]       = useState(true);
     const [refreshing, setRefreshing] = useState(false); 
     const [activeTab, setActiveTab]   = useState('30');
@@ -130,19 +146,10 @@ const Dashboard = ({ onNavigate }) => {
     const fetchDashboardData = async (isRefresh = false) => {
         try {
             if (isRefresh) setRefreshing(true); else setLoading(true);
-
-            // ✅ FIXED: 8 variables for 8 API calls
             const now = new Date();
             const [
-                intelligenceRes,
-                activityRes,
-                revRes,
-                topRes,
-                financeRes,
-                overviewRes,
-                todayStaffRes,
-                recentBillsRes,
-                mySalaryRes
+                intelligenceRes, activityRes, revRes, topRes,
+                financeRes, overviewRes, todayStaffRes, recentBillsRes, mySalaryRes
             ] = await Promise.all([
                 api.get('/intelligence/alerts').catch(() => ({ data: {} })),
                 api.get('/intelligence/recent-activity').catch(() => ({ data: [] })),
@@ -167,35 +174,85 @@ const Dashboard = ({ onNavigate }) => {
             setFinance(financeRes.data || { totalRevenue: 0, netProfit: 0, taxToPay: 0, deadStockLoss: 0, profitMargin: 0, totalReturnValue: 0, totalOutstanding: 0, totalExpenses: 0 });
             setMonthlyOverview(overviewRes.data);
             setTodayStaff(todayStaffRes.data || []);
-            setRecentBills(recentBillsRes.data || []); // ✅ FIXED
+            setRecentBills(recentBillsRes.data || []);
             setMySalary(mySalaryRes.data || null);
-
         } catch (error) { console.error('Dashboard Fetch Error:', error); }
         finally { setLoading(false); setRefreshing(false); }
     };
 
     useEffect(() => { fetchDashboardData(); }, [activeTab]);
+
     const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#c084fc'];
-    if (loading) return <div style={loadingStyle}>Synchronizing Database...</div>;
+
+    if (loading) return (
+        <div style={{ height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px' }}>
+            Synchronizing Database...
+        </div>
+    );
+
+    // ── Responsive grid helpers ──────────────────────────────────────────────
+    // Row 1 & 3: 3 cards  → desktop: 3 cols | tablet: 2 cols | mobile: 1 col
+    const grid3 = {
+        display: 'grid',
+        gridTemplateColumns: isDesktop ? 'repeat(3, 1fr)' : isTablet ? 'repeat(2, 1fr)' : '1fr',
+        gap: '16px',
+        marginBottom: '16px',
+    };
+
+    // Row 2: 2 cards → desktop/tablet: 2 cols | mobile: 1 col
+    const grid2 = {
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+        gap: '16px',
+        marginBottom: '16px',
+    };
+
+    // Row 4: [90-day][low-stock wide][staff][salary]
+    // desktop: 1fr 2fr 1fr 1fr | tablet: 1fr 1fr | mobile: 1 col
+    const grid4 = {
+        display: 'grid',
+        gridTemplateColumns: isDesktop ? '1fr 2fr 1fr 1fr' : isTablet ? 'repeat(2, 1fr)' : '1fr',
+        gap: '16px',
+        marginBottom: '30px',
+    };
+
+    // Charts: desktop 2-col | mobile 1-col
+    const chartsGridResponsive = {
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+        gap: '20px',
+        marginBottom: '30px',
+    };
 
     return (
-        <div style={containerStyle}>
-            <div style={{ padding: '40px', width: '100%' }}>
+        <div style={{ display: 'flex', backgroundColor: '#0f172a', minHeight: '100vh' }}>
+            <div style={{ padding: isMobile ? '16px' : '30px', width: '100%', boxSizing: 'border-box' }}>
 
-                {/* HEADER */}
-                <header style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ color: '#f1f5f9', margin: 0 }}>Pharmacy Intelligence</h1>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {/* ── HEADER ── */}
+                <header style={{
+                    marginBottom: '24px',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    gap: '12px',
+                }}>
+                    <h1 style={{ color: '#f1f5f9', margin: 0, fontSize: isMobile ? '20px' : '26px' }}>
+                        Pharmacy Intelligence
+                    </h1>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => fetchDashboardData(true)} style={refreshBtn}>
                             <RefreshCw size={16} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
                             {refreshing ? 'Refreshing...' : 'Refresh'}
                         </button>
-                        <button onClick={() => onNavigate('BILLING')} style={billingActionBtn}>+ QUICK BILL</button>
+                        <button onClick={() => onNavigate('BILLING')} style={billingActionBtn}>
+                            + QUICK BILL
+                        </button>
                     </div>
                 </header>
 
-                {/* FINANCE ROW 1: 3 equal cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+                {/* ── ROW 1: Net Profit | GST | Dead Stock ── */}
+                <div style={grid3}>
                     <div style={metricCard('#10b981')}>
                         <TrendingUp color="#10b981" size={20} />
                         <span style={labelStyle}>NET PROFIT (THIS MONTH)</span>
@@ -216,8 +273,8 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                {/* FINANCE ROW 2: Udhaar + Expenses */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                {/* ── ROW 2: Udhaar | Expenses ── */}
+                <div style={grid2}>
                     <div style={{ ...metricCard('#f472b6'), cursor: 'default' }}>
                         <Wallet color="#f472b6" size={20} />
                         <span style={labelStyle}>TOTAL PENDING (UDHAAR)</span>
@@ -233,8 +290,8 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                {/* ROW 3: Return + 30-day + 60-day */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+                {/* ── ROW 3: Returns | 30-day | 60-day ── */}
+                <div style={grid3}>
                     <div style={metricCard('#a78bfa')}>
                         <RotateCcw color="#a78bfa" size={20} />
                         <span style={labelStyle}>RETURNED TO SUPPLIERS</span>
@@ -254,19 +311,25 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                {/* ROW 4: 90-day + Low Stock + Staff + Salary */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-
+                {/* ── ROW 4: 90-day | Low Stock | Staff | Salary ── */}
+                <div style={grid4}>
                     <div onClick={() => setActiveTab('90')} style={metricCard(activeTab === '90' ? '#3b82f6' : '#334155')}>
                         <Package color="#60a5fa" size={20} />
                         <span style={labelStyle}>90-DAY MONITOR</span>
                         <span style={valueStyle}>{alertCounts.expiry90} Items</span>
                     </div>
 
-                    <div onClick={() => setActiveTab('low')} style={{ ...metricCard(activeTab === 'low' ? '#f97316' : '#334155'), flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div onClick={() => setActiveTab('low')} style={{
+                        ...metricCard(activeTab === 'low' ? '#f97316' : '#334155'),
+                        flexDirection: isMobile ? 'column' : 'row',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                    }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <AlertTriangle color="#f97316" size={24} />
-                            <span style={{ ...labelStyle, fontSize: '14px' }}>{activeTab === 'low' ? "VIEWING LOW STOCK ITEMS" : "CRITICAL LOW STOCK ALERT"}</span>
+                            <span style={{ ...labelStyle, fontSize: '14px' }}>
+                                {activeTab === 'low' ? 'VIEWING LOW STOCK ITEMS' : 'CRITICAL LOW STOCK ALERT'}
+                            </span>
                         </div>
                         <span style={valueStyle}>{alertCounts.lowStockCount} Items</span>
                     </div>
@@ -286,8 +349,7 @@ const Dashboard = ({ onNavigate }) => {
                             Manage Staff →
                         </button>
                     </div>
-                    
-                    {/* MY SALARY CARD — 4th column */}
+
                     <div style={{ ...metricCard('#fbbf24'), cursor: 'default' }}>
                         <IndianRupee color="#fbbf24" size={20} />
                         <span style={labelStyle}>MY SALARY THIS MONTH</span>
@@ -310,22 +372,25 @@ const Dashboard = ({ onNavigate }) => {
                             <span style={{ fontSize: '13px', color: '#475569' }}>Not available</span>
                         )}
                     </div>
-                    
-                </div>  {/* ← closing tag of ROW 4 grid */}
+                </div>
 
-                {/* ANALYTICS */}
-                <div style={chartsGrid}>
+                {/* ── ANALYTICS CHARTS ── */}
+                <div style={chartsGridResponsive}>
                     <div style={chartCard}>
                         <h3 style={chartTitle}><TrendingUp size={18} color="#34d399" /> Weekly Revenue Trend</h3>
                         <ResponsiveContainer width="100%" height={200}>
                             <BarChart data={revenueData}>
                                 <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} />
                                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
-                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
+                                <Tooltip
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                />
                                 <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+
                     <div style={chartCard}>
                         <h3 style={chartTitle}><Activity size={18} color="#a78bfa" /> Recent Activity Audit</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -335,42 +400,69 @@ const Dashboard = ({ onNavigate }) => {
                                         <span style={activityAction}>{log.action?.replace('_', ' ')}</span>
                                         <span style={activityDetails}>{log.details}</span>
                                     </div>
-                                    <span style={activityTime}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span style={activityTime}>
+                                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                 </div>
-                            )) : <div style={{ color: '#475569', fontSize: '13px', textAlign: 'center', padding: '20px' }}>No activity</div>}
+                            )) : (
+                                <div style={{ color: '#475569', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+                                    No activity
+                                </div>
+                            )}
                         </div>
                     </div>
-                    <div style={{ ...chartCard, gridColumn: 'span 2' }}>
+
+                    {/* Top 5 Products — full width */}
+                    <div style={{ ...chartCard, gridColumn: isMobile ? '1' : 'span 2' }}>
                         <h3 style={chartTitle}><BarChart2 size={18} color="#60a5fa" /> Top 5 Selling Products</h3>
                         {topMedicines.length > 0 ? (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '200px' }}>
-                                <ResponsiveContainer width="40%" height="100%">
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-around',
+                                minHeight: '200px',
+                                gap: '20px',
+                            }}>
+                                <ResponsiveContainer width={isMobile ? '100%' : '40%'} height={200}>
                                     <PieChart>
                                         <Pie data={topMedicines} dataKey="sales" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={5}>
-                                            {topMedicines.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                                            {topMedicines.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} formatter={(value, name) => [`${value} Units`, name]} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                            formatter={(value, name) => [`${value} Units`, name]}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                                    gap: '12px',
+                                    width: isMobile ? '100%' : 'auto',
+                                }}>
                                     {topMedicines.map((item, index) => (
                                         <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
-                                            <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: COLORS[index % COLORS.length] }} />
+                                            <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: COLORS[index % COLORS.length], flexShrink: 0 }} />
                                             <span style={{ color: '#cbd5e1', fontWeight: '600' }}>{item.name}:</span>
                                             <span style={{ color: '#94a3b8' }}>{item.sales} Units</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                        ) : <div style={{ color: '#475569', textAlign: 'center', padding: '40px' }}>No sales data</div>}
+                        ) : (
+                            <div style={{ color: '#475569', textAlign: 'center', padding: '40px' }}>No sales data</div>
+                        )}
                     </div>
                 </div>
 
-                {/* ✅ RECENT BILLS CARD */}
-                <div style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155', marginBottom: '30px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                {/* ── RECENT BILLS ── */}
+                <div style={{ backgroundColor: '#1e293b', padding: isMobile ? '16px' : '25px', borderRadius: '16px', border: '1px solid #334155', marginBottom: '30px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                         <h3 style={{ color: '#f1f5f9', margin: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FileText size={18} color="#60a5fa"/> Today's Recent Bills
+                            <FileText size={18} color="#60a5fa" /> Today's Recent Bills
                         </h3>
                         <button onClick={() => onNavigate('SALES_HISTORY')}
                             style={{ backgroundColor: 'transparent', color: '#60a5fa', border: '1px solid #60a5fa', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
@@ -383,97 +475,110 @@ const Dashboard = ({ onNavigate }) => {
                             No bills generated today yet.
                         </div>
                     ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid #334155' }}>
-                                    <th style={{ textAlign: 'left', padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>Customer  Name</th>
-                                    <th style={{ textAlign: 'left', padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>Time</th>
-                                    <th style={{ textAlign: 'left', padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>Items</th>
-                                    <th style={{ textAlign: 'right', padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>Amount</th>
-                                    <th style={{ textAlign: 'left', padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentBills.map((bill, i) => {
-                                    const isCredit = bill.paymentMethod === 'CREDIT' || bill.creditSale === true;
-                                    return (
-                                        <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
-                                            <td style={{ padding: '12px 10px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
-                                                {bill.patientName || bill.customerName ||'Walk-in Customer'}
-                                            </td>
-                                            <td style={{ padding: '12px 10px', color: '#94a3b8', fontSize: '13px' }}>
-                                                {bill.saleDate
-                                                    ? new Date(bill.saleDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                                                    : '—'}
-                                            </td>
-                                            <td style={{ padding: '12px 10px', color: '#94a3b8', fontSize: '13px' }}>
-                                                {(bill.saleItems || []).length} items
-                                            </td>
-                                            <td style={{ padding: '12px 10px', color: '#60a5fa', fontWeight: '700', fontSize: '14px', textAlign: 'right' }}>
-                                                ₹{(bill.totalAmount || 0).toFixed(2)}
-                                            </td>
-                                            <td style={{ padding: '12px 10px' }}>
-                                                <span style={{
-                                                    padding: '3px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: '700',
-                                                    backgroundColor: isCredit ? 'rgba(249,115,22,0.15)' : 'rgba(16,185,129,0.15)',
-                                                    color: isCredit ? '#f97316' : '#10b981',
-                                                    border: `1px solid ${isCredit ? '#f9731644' : '#10b98144'}`
-                                                }}>
-                                                    {isCredit ? 'CREDIT' : 'PAID'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                        /* Horizontal scroll wrapper on mobile */
+                        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid #334155' }}>
+                                        <th style={thStyle}>Customer Name</th>
+                                        <th style={thStyle}>Time</th>
+                                        <th style={thStyle}>Items</th>
+                                        <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
+                                        <th style={thStyle}>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentBills.map((bill, i) => {
+                                        const isCredit = bill.paymentMethod === 'CREDIT' || bill.creditSale === true;
+                                        return (
+                                            <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
+                                                <td style={{ padding: '12px 10px', color: 'white', fontWeight: '500', fontSize: '14px' }}>
+                                                    {bill.patientName || bill.customerName || 'Walk-in Customer'}
+                                                </td>
+                                                <td style={{ padding: '12px 10px', color: '#94a3b8', fontSize: '13px' }}>
+                                                    {bill.saleDate ? new Date(bill.saleDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                </td>
+                                                <td style={{ padding: '12px 10px', color: '#94a3b8', fontSize: '13px' }}>
+                                                    {(bill.saleItems || []).length} items
+                                                </td>
+                                                <td style={{ padding: '12px 10px', color: '#60a5fa', fontWeight: '700', fontSize: '14px', textAlign: 'right' }}>
+                                                    ₹{(bill.totalAmount || 0).toFixed(2)}
+                                                </td>
+                                                <td style={{ padding: '12px 10px' }}>
+                                                    <span style={{
+                                                        padding: '3px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: '700',
+                                                        backgroundColor: isCredit ? 'rgba(249,115,22,0.15)' : 'rgba(16,185,129,0.15)',
+                                                        color: isCredit ? '#f97316' : '#10b981',
+                                                        border: `1px solid ${isCredit ? '#f9731644' : '#10b98144'}`,
+                                                    }}>
+                                                        {isCredit ? 'CREDIT' : 'PAID'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
 
-                {/* DATA TABLE */}
-                <div style={tableContainer}>
-                    <h2 style={{ color: activeTab === 'low' ? '#f97316' : (activeTab === '30' ? '#f87171' : '#60a5fa'), fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Package size={20} />{activeTab === 'low' ? "Reorder List: Low Stock Items" : `Priority Sale List: Expiring within ${activeTab} Days`}
+                {/* ── EXPIRY / LOW STOCK TABLE ── */}
+                <div style={{ backgroundColor: '#1e293b', padding: isMobile ? '16px' : '30px', borderRadius: '16px', border: '1px solid #334155', marginBottom: '30px' }}>
+                    <h2 style={{ color: activeTab === 'low' ? '#f97316' : (activeTab === '30' ? '#f87171' : '#60a5fa'), fontSize: isMobile ? '15px' : '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Package size={20} />
+                        {activeTab === 'low' ? 'Reorder List: Low Stock Items' : `Priority Sale List: Expiring within ${activeTab} Days`}
                     </h2>
-                    <table style={darkTable}>
-                        <thead>
-                            <tr style={headerRow}>
-                                <th style={{ padding: '15px' }}>MEDICINE NAME</th>
-                                <th>BATCH</th>
-                                <th>EXPIRY</th>
-                                <th style={{ textAlign: 'right', paddingRight: '15px' }}>STOCK</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {displayList.length > 0 ? displayList.map((med, i) => (
-                                <tr key={i} style={rowStyle}>
-                                    <td style={{ padding: '15px' }}>{med.name}</td>
-                                    <td>{med.batchNo}</td>
-                                    <td style={{ color: activeTab === '30' ? '#f87171' : '#cbd5e1' }}>
-                                        {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString('en-IN') : 'N/A'}
-                                    </td>
-                                    <td style={{ textAlign: 'right', paddingRight: '15px', minWidth: '180px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-                                            <span style={{ color: med.stockQuantity <= (med.minStockLevel || 10) ? '#f97316' : '#10b981', fontWeight: 'bold' }}>
-                                                {med.stockQuantity} Units
-                                            </span>
-                                            {med.stockQuantity <= (med.minStockLevel || 10) && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleGenerateOrder(med.id); }} style={orderBtnStyle}>
-                                                    📦 ORDER
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
+                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
+                            <thead>
+                                <tr style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'left', borderBottom: '1px solid #334155' }}>
+                                    <th style={{ padding: '15px' }}>MEDICINE NAME</th>
+                                    <th style={{ padding: '15px' }}>BATCH</th>
+                                    <th style={{ padding: '15px' }}>EXPIRY</th>
+                                    <th style={{ padding: '15px', textAlign: 'right' }}>STOCK</th>
                                 </tr>
-                            )) : <tr><td colSpan="4" style={emptyStyle}>No records found.</td></tr>}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {displayList.length > 0 ? displayList.map((med, i) => (
+                                    <tr key={i} style={{ color: '#cbd5e1', borderBottom: '1px solid #334155', fontSize: '14px' }}>
+                                        <td style={{ padding: '15px' }}>{med.name}</td>
+                                        <td style={{ padding: '15px' }}>{med.batchNo}</td>
+                                        <td style={{ padding: '15px', color: activeTab === '30' ? '#f87171' : '#cbd5e1' }}>
+                                            {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString('en-IN') : 'N/A'}
+                                        </td>
+                                        <td style={{ padding: '15px', textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+                                                <span style={{ color: med.stockQuantity <= (med.minStockLevel || 10) ? '#f97316' : '#10b981', fontWeight: 'bold' }}>
+                                                    {med.stockQuantity} Units
+                                                </span>
+                                                {med.stockQuantity <= (med.minStockLevel || 10) && (
+                                                    <button onClick={(e) => { e.stopPropagation(); handleGenerateOrder(med.id); }} style={orderBtnStyle}>
+                                                        📦 ORDER
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#475569' }}>No records found.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                {/* ORDER MODAL */}
+                {/* ── ORDER MODAL ── */}
                 {orderModal.show && (
                     <div style={modalOverlay} onClick={() => setOrderModal({ show: false, data: null, qty: 0 })}>
-                        <div style={modalContent} onClick={e => e.stopPropagation()}>
+                        <div
+                            style={{
+                                ...modalContent,
+                                width: isMobile ? '92vw' : '400px',
+                                padding: isMobile ? '20px' : '28px',
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                 <h3 style={{ color: 'white', margin: 0 }}>📦 Purchase Order</h3>
                                 <button onClick={() => setOrderModal({ show: false, data: null, qty: 0 })} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}>×</button>
@@ -486,8 +591,15 @@ const Dashboard = ({ onNavigate }) => {
                                 <div style={modalRow}><span style={modalLabel}>Email:</span><span style={{ color: '#94a3b8' }}>{orderModal.data.email}</span></div>
                                 <div style={modalRow}><span style={modalLabel}>Current Stock:</span><span style={{ color: '#f97316', fontWeight: 700 }}>{orderModal.data.currentStock} units</span></div>
                             </div>
-                            <label style={{ color: '#cbd5e1', fontSize: '12px', display: 'block', marginBottom: '8px', fontWeight: 700 }}>CONFIRM QUANTITY TO ORDER:</label>
-                            <input type="number" value={orderModal.qty} onChange={(e) => setOrderModal({ ...orderModal, qty: e.target.value })} style={modalInput} />
+                            <label style={{ color: '#cbd5e1', fontSize: '12px', display: 'block', marginBottom: '8px', fontWeight: 700 }}>
+                                CONFIRM QUANTITY TO ORDER:
+                            </label>
+                            <input
+                                type="number"
+                                value={orderModal.qty}
+                                onChange={(e) => setOrderModal({ ...orderModal, qty: e.target.value })}
+                                style={modalInput}
+                            />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
                                 <button onClick={() => generatePDF('whatsapp')} disabled={pdfLoading} style={{ ...modalBtn, backgroundColor: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                     <Send size={16} />{pdfLoading ? 'Generating...' : 'Generate PDF & Send WhatsApp'}
@@ -498,7 +610,9 @@ const Dashboard = ({ onNavigate }) => {
                                 <button onClick={() => generatePDF(null)} disabled={pdfLoading} style={{ ...modalBtn, backgroundColor: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                     <Download size={16} />Download PDF Only
                                 </button>
-                                <button onClick={() => setOrderModal({ show: false, data: null, qty: 0 })} style={{ ...modalBtn, backgroundColor: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>Cancel</button>
+                                <button onClick={() => setOrderModal({ show: false, data: null, qty: 0 })} style={{ ...modalBtn, backgroundColor: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
+                                    Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -509,33 +623,26 @@ const Dashboard = ({ onNavigate }) => {
     );
 };
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-const loadingStyle = { height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px', marginLeft: '240px' };
-const containerStyle = { display: 'flex', backgroundColor: '#0f172a', minHeight: '100vh', marginLeft: '240px' };
-const billingActionBtn = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
-const refreshBtn = { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' };
-const viewHistoryBtn = { backgroundColor: 'transparent', color: '#a78bfa', border: '1px solid #a78bfa', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', marginTop: '4px', width: 'fit-content' };
-const metricCard = (borderColor) => ({ backgroundColor: '#1e293b', padding: '25px', borderRadius: '16px', border: `2px solid ${borderColor}`, display: 'flex', flexDirection: 'column', gap: '10px', cursor: 'pointer' });
-const labelStyle = { color: '#94a3b8', fontSize: '12px', fontWeight: '800' };
-const valueStyle = { color: '#f1f5f9', fontSize: '28px', fontWeight: 'bold' };
-const chartsGrid = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '25px', marginBottom: '40px' };
-const chartCard = { backgroundColor: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' };
-const chartTitle = { color: '#cbd5e1', fontSize: '15px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' };
-const tableContainer = { backgroundColor: '#1e293b', padding: '30px', borderRadius: '16px', border: '1px solid #334155' };
-const darkTable = { width: '100%', borderCollapse: 'collapse' };
-const headerRow = { color: '#94a3b8', fontSize: '13px', textAlign: 'left', borderBottom: '1px solid #334155' };
-const rowStyle = { color: '#cbd5e1', borderBottom: '1px solid #334155', fontSize: '14px' };
-const emptyStyle = { padding: '40px', textAlign: 'center', color: '#475569' };
-const activityRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid #60a5fa' };
-const activityAction = { fontSize: '11px', fontWeight: 'bold', color: '#f1f5f9', textTransform: 'uppercase' };
-const activityDetails = { fontSize: '10px', color: '#94a3b8' };
-const activityTime = { fontSize: '9px', color: '#64748b', fontWeight: 'bold' };
-const orderBtnStyle = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
-const modalOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
-const modalContent = { backgroundColor: '#1e293b', padding: '28px', borderRadius: '20px', border: '1px solid #334155', width: '400px', maxHeight: '90vh', overflowY: 'auto' };
-const modalInput = { width: '100%', padding: '12px', backgroundColor: '#0f172a', border: '1px solid #334155', color: 'white', borderRadius: '10px', boxSizing: 'border-box', outline: 'none', fontSize: '18px', fontWeight: 'bold' };
-const modalBtn = { width: '100%', padding: '12px', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
-const modalRow = { display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' };
-const modalLabel = { color: '#64748b', fontSize: '12px' };
+// ── Shared styles (no marginLeft anywhere) ─────────────────────────────────────
+const billingActionBtn  = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
+const refreshBtn        = { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' };
+const viewHistoryBtn    = { backgroundColor: 'transparent', color: '#a78bfa', border: '1px solid #a78bfa', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', marginTop: '4px', width: 'fit-content' };
+const metricCard        = (borderColor) => ({ backgroundColor: '#1e293b', padding: '20px', borderRadius: '16px', border: `2px solid ${borderColor}`, display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer' });
+const labelStyle        = { color: '#94a3b8', fontSize: '12px', fontWeight: '800' };
+const valueStyle        = { color: '#f1f5f9', fontSize: '28px', fontWeight: 'bold' };
+const chartCard         = { backgroundColor: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' };
+const chartTitle        = { color: '#cbd5e1', fontSize: '15px', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' };
+const activityRow       = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid #60a5fa' };
+const activityAction    = { fontSize: '11px', fontWeight: 'bold', color: '#f1f5f9', textTransform: 'uppercase' };
+const activityDetails   = { fontSize: '10px', color: '#94a3b8' };
+const activityTime      = { fontSize: '9px', color: '#64748b', fontWeight: 'bold' };
+const orderBtnStyle     = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
+const thStyle           = { padding: '10px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase', textAlign: 'left' };
+const modalOverlay      = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
+const modalContent      = { backgroundColor: '#1e293b', borderRadius: '20px', border: '1px solid #334155', maxHeight: '90vh', overflowY: 'auto' };
+const modalInput        = { width: '100%', padding: '12px', backgroundColor: '#0f172a', border: '1px solid #334155', color: 'white', borderRadius: '10px', boxSizing: 'border-box', outline: 'none', fontSize: '18px', fontWeight: 'bold' };
+const modalBtn          = { width: '100%', padding: '12px', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
+const modalRow          = { display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' };
+const modalLabel        = { color: '#64748b', fontSize: '12px' };
 
 export default Dashboard;

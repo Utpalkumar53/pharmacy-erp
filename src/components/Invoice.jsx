@@ -46,27 +46,28 @@ const Invoice = ({ data, onClose }) => {
     : 'N/A';
 
   return (
-    <div style={modalOverlay}>
-      <div style={invoiceCard}>
+    <div style={s.modalOverlay}>
+      <div className="inv-card">
 
-        {/* Buttons */}
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <h2 style={{ color: '#60a5fa', margin: 0 }}>Invoice Generated</h2>
+        {/* ── Buttons (no-print) ── */}
+        <div className="no-print inv-top-bar">
+          <h2 style={{ color: '#60a5fa', margin: 0, fontSize: '18px' }}>Invoice Generated</h2>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handlePrint} style={actionBtn('#2563eb')}>
-              <Printer size={18} /> Print
+            <button onClick={handlePrint} style={s.printBtn}>
+              <Printer size={16} /> Print
             </button>
-            <button onClick={onClose} style={actionBtn('#475569')}>
-              <X size={18} />
+            <button onClick={onClose} style={s.closeBtn}>
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        <div id="printable-invoice" style={printArea}>
+        {/* ── Printable area ── */}
+        <div id="printable-invoice" style={s.printArea}>
 
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '16px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-            <h1 style={{ margin: '0 0 4px 0', fontSize: '20px', textTransform: 'uppercase', letterSpacing: '2px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '14px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+            <h1 style={{ margin: '0 0 4px 0', fontSize: '18px', textTransform: 'uppercase', letterSpacing: '2px' }}>
               {pharmacy?.pharmacyName || 'MAA BHAGWATI PHARMA'}
             </h1>
             <p style={{ margin: '2px 0', fontSize: '12px' }}>
@@ -82,95 +83,80 @@ const Invoice = ({ data, onClose }) => {
             )}
           </div>
 
-          {/* Bill To + Invoice Info */}
-          <table style={{ width: '100%', marginBottom: '16px', fontSize: '13px', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ verticalAlign: 'top', width: '50%', padding: '2px 0' }}>
-                  <strong>Bill To:</strong> {data.customerName || 'Cash Customer'}
-                </td>
-                <td style={{ verticalAlign: 'top', textAlign: 'right', padding: '2px 0' }}>
-                  <strong>Invoice No:</strong> {data.id?.substring(0, 8).toUpperCase() || 'INV-001'}
-                </td>
-              </tr>
-              <tr>
-                <td style={{ verticalAlign: 'top', padding: '2px 0' }}>
-                  <strong>Contact:</strong> {data.customerMobile || 'N/A'}
-                </td>
-                <td style={{ verticalAlign: 'top', textAlign: 'right', padding: '2px 0' }}>
-                  {/* ✅ FIX 2: Shows actual billing date, handles old/corrupt dates */}
-                  <strong>Date:</strong> {displayDate}
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td style={{ verticalAlign: 'top', textAlign: 'right', padding: '2px 0' }}>
-                  <strong>Payment:</strong> {data.paymentMethod || 'CASH'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* ── Bill To + Invoice Info ── */}
+          <div className="inv-bill-grid">
+            {/* Left: customer */}
+            <div style={{ fontSize: '13px', lineHeight: '1.8' }}>
+              <div><strong>Bill To:</strong> {data.customerName || 'Cash Customer'}</div>
+              <div><strong>Contact:</strong> {data.customerMobile || 'N/A'}</div>
+            </div>
+            {/* Right: invoice meta */}
+            <div style={{ fontSize: '13px', lineHeight: '1.8', textAlign: 'right' }}>
+              <div><strong>Invoice No:</strong> {data.id?.substring(0, 8).toUpperCase() || 'INV-001'}</div>
+              <div><strong>Date:</strong> {displayDate}</div>
+              <div><strong>Payment:</strong> {data.paymentMethod || 'CASH'}</div>
+            </div>
+          </div>
 
-          {/* Items Table */}
-          <table style={tableStyle}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
-                <th style={{ ...th, width: '45%' }}>Item Name</th>
-                <th style={{ ...th, textAlign: 'right', width: '20%' }}>MRP</th>
-                <th style={{ ...th, textAlign: 'center', width: '15%' }}>Qty</th>
-                <th style={{ ...th, textAlign: 'right', width: '20%' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.saleItems && data.saleItems.map((item, index) => {
-                const itemPrice = getItemPrice(item);
-                const itemTotal = itemPrice * item.quantity;
-                return (
-                  <tr key={index}>
-                    <td style={td}>{item.medicineName || 'Medicine'}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>₹{itemPrice.toFixed(2)}</td>
-                    <td style={{ ...td, textAlign: 'center' }}>{item.quantity}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>₹{itemTotal.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* ── Items Table ── */}
+          <div className="inv-table-scroll">
+            <table style={s.table}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
+                  <th style={{ ...s.th, width: '45%', textAlign: 'left' }}>Item Name</th>
+                  <th style={{ ...s.th, width: '20%', textAlign: 'right' }}>MRP</th>
+                  <th style={{ ...s.th, width: '15%', textAlign: 'center' }}>Qty</th>
+                  <th style={{ ...s.th, width: '20%', textAlign: 'right' }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.saleItems && data.saleItems.map((item, index) => {
+                  const itemPrice = getItemPrice(item);
+                  const itemTotal = itemPrice * item.quantity;
+                  return (
+                    <tr key={index}>
+                      <td style={s.td}>{item.medicineName || 'Medicine'}</td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>₹{itemPrice.toFixed(2)}</td>
+                      <td style={{ ...s.td, textAlign: 'center' }}>{item.quantity}</td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>₹{itemTotal.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Summary */}
+          {/* ── Summary ── */}
           <div style={{ marginTop: '16px', borderTop: '2px solid #000', paddingTop: '10px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <tbody>
                 <tr>
-                  <td style={{ width: '60%' }}></td>
+                  <td style={{ width: '55%' }}></td>
                   <td style={{ textAlign: 'right', padding: '3px 0' }}>Subtotal:</td>
-                  <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '20px', width: '100px' }}>
+                  <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '16px', minWidth: '90px' }}>
                     ₹{data.totalAmount?.toFixed(2)}
                   </td>
                 </tr>
                 <tr>
                   <td></td>
                   <td style={{ textAlign: 'right', padding: '3px 0' }}>GST (Incl.):</td>
-                  <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '20px' }}>
+                  <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '16px' }}>
                     ₹{gstIncluded.toFixed(2)}
                   </td>
                 </tr>
-
                 {roundOffToShow !== 0 && (
                   <tr>
                     <td></td>
                     <td style={{ textAlign: 'right', padding: '3px 0', color: '#555' }}>Round Off:</td>
-                    <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '20px', color: '#555' }}>
+                    <td style={{ textAlign: 'right', padding: '3px 0', paddingLeft: '16px', color: '#555' }}>
                       {roundOffToShow >= 0 ? '+' : ''}₹{roundOffToShow.toFixed(2)}
                     </td>
                   </tr>
                 )}
-
-                {/* ✅ FIX 1: Now correctly shows totalAmount for old bills where finalAmount=0 */}
-                <tr style={{ borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '16px' }}>
+                <tr style={{ borderTop: '1px solid #000', fontWeight: 'bold', fontSize: '15px' }}>
                   <td></td>
                   <td style={{ textAlign: 'right', padding: '6px 0' }}>Total Charged:</td>
-                  <td style={{ textAlign: 'right', padding: '6px 0', paddingLeft: '20px' }}>
+                  <td style={{ textAlign: 'right', padding: '6px 0', paddingLeft: '16px' }}>
                     ₹{finalAmountToShow?.toFixed(2)}
                   </td>
                 </tr>
@@ -185,6 +171,73 @@ const Invoice = ({ data, onClose }) => {
       </div>
 
       <style>{`
+        /* ── Invoice card ── */
+        .inv-card {
+          background-color: #1e293b;
+          padding: 28px;
+          border-radius: 12px;
+          width: 90%;
+          max-width: 700px;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-sizing: border-box;
+        }
+
+        /* ── Top bar ── */
+        .inv-top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        /* ── Bill-to grid: 2-col desktop ── */
+        .inv-bill-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        /* ── Table scroll for very small screens ── */
+        .inv-table-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* ════════════════════════════════
+           TABLET  (≤ 640px)
+        ════════════════════════════════ */
+        @media (max-width: 640px) {
+          .inv-card {
+            width: 95%;
+            padding: 18px 14px;
+          }
+          .inv-bill-grid {
+            grid-template-columns: 1fr;
+          }
+          .inv-bill-grid > div:last-child {
+            text-align: left !important;
+          }
+        }
+
+        /* ════════════════════════════════
+           MOBILE  (≤ 400px)
+        ════════════════════════════════ */
+        @media (max-width: 400px) {
+          .inv-card {
+            width: 100%;
+            padding: 14px 10px;
+            border-radius: 8px;
+          }
+          .inv-top-bar h2 {
+            font-size: 15px !important;
+          }
+        }
+
+        /* ── Print styles ── */
         @media print {
           body * { visibility: hidden; }
           #printable-invoice, #printable-invoice * { visibility: visible; }
@@ -206,18 +259,48 @@ const Invoice = ({ data, onClose }) => {
             word-wrap: break-word;
             overflow-wrap: break-word;
           }
+          /* Restore bill grid for print */
+          .inv-bill-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .inv-bill-grid > div:last-child {
+            text-align: right !important;
+          }
         }
       `}</style>
     </div>
   );
 };
 
-const modalOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 };
-const invoiceCard = { backgroundColor: '#1e293b', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' };
-const printArea = { backgroundColor: 'white', color: 'black', padding: '24px', borderRadius: '4px', fontFamily: 'monospace' };
-const actionBtn = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' });
-const tableStyle = { width: '100%', borderCollapse: 'collapse', marginTop: '10px', tableLayout: 'fixed' };
-const th = { textAlign: 'left', padding: '8px 5px', fontSize: '13px', fontWeight: 'bold' };
-const td = { padding: '7px 5px', borderBottom: '1px solid #ddd', fontSize: '12px', wordWrap: 'break-word' };
+// ── Styles ────────────────────────────────────────────────────────────────────
+const s = {
+  modalOverlay: {
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    display: 'flex', justifyContent: 'center', alignItems: 'center',
+    zIndex: 9999, padding: '12px',
+  },
+  printArea: {
+    backgroundColor: 'white', color: 'black',
+    padding: '20px', borderRadius: '4px', fontFamily: 'monospace',
+  },
+  printBtn: {
+    backgroundColor: '#2563eb', color: 'white', border: 'none',
+    padding: '8px 16px', borderRadius: '6px', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px',
+  },
+  closeBtn: {
+    backgroundColor: '#475569', color: 'white', border: 'none',
+    padding: '8px 12px', borderRadius: '6px', cursor: 'pointer',
+    display: 'flex', alignItems: 'center',
+  },
+  table: {
+    width: '100%', borderCollapse: 'collapse',
+    marginTop: '10px', tableLayout: 'fixed', minWidth: '320px',
+  },
+  th: { padding: '8px 5px', fontSize: '13px', fontWeight: 'bold' },
+  td: { padding: '7px 5px', borderBottom: '1px solid #ddd', fontSize: '12px', wordWrap: 'break-word' },
+};
 
 export default Invoice;

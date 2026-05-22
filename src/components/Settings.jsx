@@ -30,14 +30,13 @@ const Settings = () => {
     categoryMaster:    [...DEFAULT_CATS],
   });
 
-  // ── ALL STATE HOOKS AT TOP (React rules) ─────────────────────────────
-  const [loading,      setLoading]      = useState(false);
-  const [saving,       setSaving]       = useState(false);
-  const [msg,          setMsg]          = useState({ text: '', type: '' });
-  const [newUnit,      setNewUnit]      = useState('');
-  const [newCat,       setNewCat]       = useState('');
-  const [smtpSaving,   setSmtpSaving]   = useState(false);
-  const [smtpTesting,  setSmtpTesting]  = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [msg,         setMsg]         = useState({ text: '', type: '' });
+  const [newUnit,     setNewUnit]     = useState('');
+  const [newCat,      setNewCat]      = useState('');
+  const [smtpSaving,  setSmtpSaving]  = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
   const [smtp, setSmtp] = useState({
     smtpEmail:           '',
     smtpAppPassword:     '',
@@ -46,7 +45,6 @@ const Settings = () => {
     backupRecipientEmail:''
   });
 
-  // ── LOAD PROFILE ──────────────────────────────────────────────────────
   useEffect(() => {
     api.get('/profile').then(res => {
       if (res.data) {
@@ -56,7 +54,6 @@ const Settings = () => {
           unitMaster:     res.data.unitMaster?.length     ? res.data.unitMaster     : [...DEFAULT_UNITS],
           categoryMaster: res.data.categoryMaster?.length ? res.data.categoryMaster : [...DEFAULT_CATS],
         }));
-        // Pre-fill SMTP fields if already saved (password shown as placeholder)
         if (res.data.smtpEmail) {
           setSmtp(prev => ({
             ...prev,
@@ -64,7 +61,6 @@ const Settings = () => {
             smtpHost:             res.data.smtpHost  || 'smtp.gmail.com',
             smtpPort:             res.data.smtpPort  || 587,
             backupRecipientEmail: res.data.backupRecipientEmail || '',
-            // Don't load password — user must re-enter for security
           }));
         }
       }
@@ -76,7 +72,6 @@ const Settings = () => {
     setTimeout(() => setMsg({ text: '', type: '' }), 5000);
   };
 
-  // ── HANDLERS ──────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -115,14 +110,10 @@ const Settings = () => {
       const a = document.createElement('a');
       a.href = url;
       a.setAttribute('download', `Pharma_Backup_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(a);
-      a.click();
+      document.body.appendChild(a); a.click();
       showMsg('Backup downloaded!', 'success');
-    } catch {
-      showMsg('Failed to download backup.', 'error');
-    } finally {
-      setLoading(false);
-    }
+    } catch { showMsg('Failed to download backup.', 'error'); }
+    finally { setLoading(false); }
   };
 
   const handleDownloadExcel = async () => {
@@ -133,66 +124,52 @@ const Settings = () => {
       const a = document.createElement('a');
       a.href = url;
       a.setAttribute('download', `Sales_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-      document.body.appendChild(a);
-      a.click();
+      document.body.appendChild(a); a.click();
       showMsg('Sales Excel exported!', 'success');
-    } catch {
-      showMsg('Excel export failed.', 'error');
-    } finally {
-      setLoading(false);
-    }
+    } catch { showMsg('Excel export failed.', 'error'); }
+    finally { setLoading(false); }
   };
 
-const handleEmailBackup = async () => {
-  setLoading(true);
-  try {
-    await api.post('/backup/send-email');
-    showMsg('Backup emailed successfully!', 'success');
-  } catch (e) {
-    const errMsg = e?.response?.data || e?.message || 'Email sending failed.';
-    showMsg(`Email failed: ${errMsg}`, 'error');
-  } finally {
-    setLoading(false);
-  }
+  const handleEmailBackup = async () => {
+    setLoading(true);
+    try {
+      await api.post('/backup/send-email');
+      showMsg('Backup emailed successfully!', 'success');
+    } catch (e) {
+      const errMsg = e?.response?.data || e?.message || 'Email sending failed.';
+      showMsg(`Email failed: ${errMsg}`, 'error');
+    } finally { setLoading(false); }
   };
 
   const handleSaveSmtp = async () => {
     if (!smtp.smtpEmail || !smtp.smtpAppPassword) {
-      showMsg('Email and App Password are required.', 'error');
-      return;
+      showMsg('Email and App Password are required.', 'error'); return;
     }
     setSmtpSaving(true);
     try {
       await api.post('/profile/smtp', smtp);
       showMsg('Email config saved successfully!', 'success');
-    } catch {
-      showMsg('Failed to save email config.', 'error');
-    } finally {
-      setSmtpSaving(false);
-    }
+    } catch { showMsg('Failed to save email config.', 'error'); }
+    finally { setSmtpSaving(false); }
   };
 
   const handleTestSmtp = async () => {
     if (!smtp.smtpEmail || !smtp.smtpAppPassword) {
-      showMsg('Save email config first before testing.', 'error');
-      return;
+      showMsg('Save email config first before testing.', 'error'); return;
     }
     setSmtpTesting(true);
     try {
       await api.post('/profile/smtp/test');
       showMsg('✅ Email connection successful!', 'success');
-    } catch {
-      showMsg('❌ Connection failed. Check your App Password.', 'error');
-    } finally {
-      setSmtpTesting(false);
-    }
+    } catch { showMsg('❌ Connection failed. Check your App Password.', 'error'); }
+    finally { setSmtpTesting(false); }
   };
 
-  // ── RENDER ────────────────────────────────────────────────────────────
   return (
-    <div style={s.page}>
+    <div className="set-page">
       <h1 style={s.h1}>Settings & Configuration</h1>
 
+      {/* ── Toast ── */}
       {msg.text && (
         <div style={{
           ...s.toast,
@@ -205,8 +182,8 @@ const handleEmailBackup = async () => {
         </div>
       )}
 
-      {/* SECTION 1: Pharmacy Profile */}
-      <div style={s.card}>
+      {/* ── SECTION 1: Pharmacy Profile ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><Store size={20} color="#60a5fa"/> Pharmacy Profile</h2>
         <div style={s.group}>
           <label style={s.label}><Store size={13}/> Pharmacy Name</label>
@@ -219,7 +196,7 @@ const handleEmailBackup = async () => {
             value={profile.address}
             onChange={e => setProfile({ ...profile, address: e.target.value })}/>
         </div>
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}><Phone size={13}/> Contact No.</label>
             <input style={s.input} value={profile.contactNumber}
@@ -231,7 +208,7 @@ const handleEmailBackup = async () => {
               onChange={e => setProfile({ ...profile, email: e.target.value })}/>
           </div>
         </div>
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}><FileText size={13}/> GST Number</label>
             <input style={s.input} value={profile.gstNumber}
@@ -245,11 +222,11 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 2: Bank Details */}
-      <div style={s.card}>
+      {/* ── SECTION 2: Bank Details ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><Landmark size={20} color="#10b981"/> Bank Details</h2>
         <p style={s.hint}>Used on invoices and purchase order PDFs.</p>
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}>Bank Name</label>
             <input style={s.input} placeholder="e.g. State Bank of India"
@@ -263,7 +240,7 @@ const handleEmailBackup = async () => {
               onChange={e => setProfile({ ...profile, bankAccountNumber: e.target.value })}/>
           </div>
         </div>
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}>IFSC Code</label>
             <input style={s.input} placeholder="e.g. SBIN0001234"
@@ -279,10 +256,10 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 3: Business Settings */}
-      <div style={s.card}>
+      {/* ── SECTION 3: Business Settings ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><Settings2 size={20} color="#f97316"/> Business Settings</h2>
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}><IndianRupee size={13}/> Low Stock Threshold (units)</label>
             <input type="number" style={s.input}
@@ -300,8 +277,8 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 4: Invoice Settings */}
-      <div style={s.card}>
+      {/* ── SECTION 4: Invoice Settings ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><FileText size={20} color="#a78bfa"/> Invoice Settings</h2>
         <div style={s.group}>
           <label style={s.label}>Invoice Footer Text</label>
@@ -319,8 +296,8 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 5: Unit Master */}
-      <div style={s.card}>
+      {/* ── SECTION 5: Unit Master ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><Package size={20} color="#fbbf24"/> Unit Master</h2>
         <p style={s.hint}>Units available when adding medicines to inventory.</p>
         <div style={s.tagBox}>
@@ -331,7 +308,7 @@ const handleEmailBackup = async () => {
             </div>
           ))}
         </div>
-        <div style={s.addRow}>
+        <div className="set-add-row">
           <input style={{ ...s.input, flex: 1, marginBottom: 0 }}
             placeholder="Add new unit e.g. Vial"
             value={newUnit}
@@ -341,8 +318,8 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 6: Category Master */}
-      <div style={s.card}>
+      {/* ── SECTION 6: Category Master ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}><Tag size={20} color="#f472b6"/> Medicine Category Master</h2>
         <p style={s.hint}>Categories available when adding medicines to inventory.</p>
         <div style={s.tagBox}>
@@ -353,7 +330,7 @@ const handleEmailBackup = async () => {
             </div>
           ))}
         </div>
-        <div style={s.addRow}>
+        <div className="set-add-row">
           <input style={{ ...s.input, flex: 1, marginBottom: 0 }}
             placeholder="Add new category e.g. Cardiac"
             value={newCat}
@@ -365,8 +342,8 @@ const handleEmailBackup = async () => {
         </div>
       </div>
 
-      {/* SECTION 7: Email / SMTP Configuration */}
-      <div style={s.card}>
+      {/* ── SECTION 7: Email / SMTP ── */}
+      <div className="set-card">
         <h2 style={s.sectionTitle}>
           <Mail size={20} color="#38bdf8"/> Email Configuration (SMTP)
         </h2>
@@ -378,24 +355,20 @@ const handleEmailBackup = async () => {
             Generate App Password →
           </a>
         </p>
-
-        <div style={s.row2}>
+        <div className="set-row2">
           <div style={s.group}>
             <label style={s.label}><Mail size={13}/> Gmail Address</label>
-            <input style={s.input}
-              placeholder="yourshop@gmail.com"
+            <input style={s.input} placeholder="yourshop@gmail.com"
               value={smtp.smtpEmail}
               onChange={e => setSmtp({ ...smtp, smtpEmail: e.target.value })}/>
           </div>
           <div style={s.group}>
             <label style={s.label}><ShieldCheck size={13}/> Gmail App Password</label>
-            <input style={s.input} type="password"
-              placeholder="16-character app password"
+            <input style={s.input} type="password" placeholder="16-character app password"
               value={smtp.smtpAppPassword}
               onChange={e => setSmtp({ ...smtp, smtpAppPassword: e.target.value })}/>
           </div>
         </div>
-
         <div style={s.group}>
           <label style={s.label}><Mail size={13}/> Backup Recipient Email</label>
           <input style={s.input}
@@ -403,36 +376,34 @@ const handleEmailBackup = async () => {
             value={smtp.backupRecipientEmail}
             onChange={e => setSmtp({ ...smtp, backupRecipientEmail: e.target.value })}/>
         </div>
-
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="set-smtp-btns">
           <button onClick={handleTestSmtp} disabled={smtpTesting}
-            style={{ ...s.actionBtn, backgroundColor: '#0f766e', flex: 'none', padding: '11px 20px' }}>
+            style={{ ...s.smtpBtn, backgroundColor: '#0f766e' }}>
             {smtpTesting ? 'Testing...' : '🔌 Test Connection'}
           </button>
           <button onClick={handleSaveSmtp} disabled={smtpSaving}
-            style={{ ...s.actionBtn, backgroundColor: '#1d4ed8', flex: 'none', padding: '11px 20px' }}>
+            style={{ ...s.smtpBtn, backgroundColor: '#1d4ed8' }}>
             {smtpSaving ? 'Saving...' : '💾 Save Email Config'}
           </button>
         </div>
-
         <div style={{ ...s.infoBox, marginTop: '16px', color: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.05)' }}>
           <ShieldCheck size={16}/>
           <span>App Password is <strong>encrypted</strong> before storing in database</span>
         </div>
       </div>
 
-      {/* SAVE ALL BUTTON */}
+      {/* ── Save All Button ── */}
       <button onClick={handleSaveProfile} disabled={saving}
         style={{ ...s.saveBtn, opacity: saving ? 0.7 : 1 }}>
         <Save size={18}/>
         {saving ? 'Saving...' : 'SAVE ALL SETTINGS'}
       </button>
 
-      {/* SECTION 8: Backup & Maintenance */}
-      <div style={{ ...s.card, marginTop: '10px' }}>
+      {/* ── SECTION 8: Backup & Maintenance ── */}
+      <div className="set-card" style={{ marginTop: '10px' }}>
         <h2 style={s.sectionTitle}><ShieldCheck size={20} color="#10b981"/> Database Maintenance</h2>
         <p style={s.hint}>Protect your data. Manually trigger backups or download a snapshot.</p>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+        <div className="set-backup-btns">
           <button style={{ ...s.actionBtn, backgroundColor: '#064e3b' }}
             onClick={handleDownloadBackup} disabled={loading}>
             <Download size={18}/> {loading ? 'Processing...' : 'JSON Backup'}
@@ -451,27 +422,129 @@ const handleEmailBackup = async () => {
           <span>Automated Sunday Backup is <strong>Active (10:00 AM)</strong></span>
         </div>
       </div>
+
+      <style>{`
+        /* ── Page ── */
+        .set-page {
+          padding: 40px;
+          background-color: #0f172a;
+          min-height: 100vh;
+          box-sizing: border-box;
+        }
+
+        /* ── Cards: max-width on desktop ── */
+        .set-card {
+          background-color: #1e293b;
+          padding: 28px;
+          border-radius: 16px;
+          border: 1px solid #334155;
+          max-width: 860px;
+          margin-bottom: 20px;
+          box-sizing: border-box;
+        }
+
+        /* ── 2-col rows ── */
+        .set-row2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        /* ── Add-row (input + button) ── */
+        .set-add-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        /* ── SMTP buttons ── */
+        .set-smtp-btns {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        /* ── Backup buttons ── */
+        .set-backup-btns {
+          display: flex;
+          gap: 15px;
+          flex-wrap: wrap;
+        }
+
+        /* ════════════════════════════════
+           TABLET  (≤ 900px)
+        ════════════════════════════════ */
+        @media (max-width: 900px) {
+          .set-page {
+            padding: 24px 16px;
+          }
+          .set-card {
+            max-width: 100%;
+            padding: 20px 16px;
+          }
+        }
+
+        /* ════════════════════════════════
+           MOBILE  (≤ 480px)
+        ════════════════════════════════ */
+        @media (max-width: 480px) {
+          .set-page {
+            padding: 14px 12px;
+          }
+          .set-card {
+            padding: 16px 12px;
+            border-radius: 12px;
+          }
+          /* Stack all 2-col rows */
+          .set-row2 {
+            grid-template-columns: 1fr;
+            gap: 0;
+          }
+          /* Stack add-row */
+          .set-add-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .set-add-row button {
+            width: 100%;
+            justify-content: center;
+          }
+          /* Stack SMTP buttons */
+          .set-smtp-btns {
+            flex-direction: column;
+          }
+          .set-smtp-btns button {
+            width: 100% !important;
+          }
+          /* Stack backup buttons */
+          .set-backup-btns {
+            flex-direction: column;
+            gap: 10px;
+          }
+          .set-backup-btns button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = {
-  page:        { padding: '40px', marginLeft: '240px', backgroundColor: '#0f172a', minHeight: '100vh' },
-  h1:          { color: 'white', marginBottom: '28px', fontSize: '26px', fontWeight: '600' },
-  toast:       { display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', borderRadius: '8px', marginBottom: '20px', maxWidth: '860px', fontSize: '14px' },
-  card:        { backgroundColor: '#1e293b', padding: '28px', borderRadius: '16px', border: '1px solid #334155', maxWidth: '860px', marginBottom: '20px' },
-  sectionTitle:{ color: 'white', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #334155', paddingBottom: '12px' },
+  h1:          { color: 'white', marginBottom: '28px', fontSize: '26px', fontWeight: '600', marginTop: 0 },
+  toast:       { display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', maxWidth: '860px' },
+  sectionTitle:{ color: 'white', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #334155', paddingBottom: '12px', marginTop: 0 },
   group:       { marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '6px' },
-  row2:        { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
   label:       { color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' },
   input:       { backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '11px 14px', color: 'white', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' },
   hint:        { color: '#64748b', fontSize: '12px', marginTop: '2px', marginBottom: '12px' },
-  saveBtn:     { width: '100%', maxWidth: '860px', padding: '16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', fontSize: '15px', marginBottom: '20px' },
-  actionBtn:   { flex: '1 1 200px', padding: '14px', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' },
+  saveBtn:     { width: '100%', maxWidth: '860px', padding: '16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', fontSize: '15px', marginBottom: '20px', boxSizing: 'border-box' },
+  actionBtn:   { flex: '1 1 180px', padding: '13px 16px', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', fontSize: '14px' },
+  smtpBtn:     { padding: '11px 20px', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '14px' },
   infoBox:     { marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: '#10b981', fontSize: '13px', backgroundColor: 'rgba(16,185,129,0.05)', padding: '12px', borderRadius: '8px' },
   tagBox:      { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' },
   tag:         { display: 'flex', alignItems: 'center', backgroundColor: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24', padding: '5px 12px', borderRadius: '99px', fontSize: '13px', fontWeight: '500' },
-  addRow:      { display: 'flex', gap: '10px', alignItems: 'center' },
   addBtn:      { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#d97706', color: 'white', border: 'none', padding: '11px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' },
 };
 

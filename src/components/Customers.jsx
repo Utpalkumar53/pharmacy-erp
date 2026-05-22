@@ -9,7 +9,6 @@ const Customers = () => {
   const [activeCustomer, setActiveCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // States for Registering New Customer
   const [newCustName, setNewCustName] = useState('');
   const [newCustMobile, setNewCustMobile] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -26,20 +25,13 @@ const Customers = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+  useEffect(() => { fetchCustomers(); }, []);
 
   const handleRegisterCustomer = async (e) => {
     e.preventDefault();
     if (!newCustName.trim()) return;
-
     try {
-      await api.post('/customers', {
-        name: newCustName,
-        mobile: newCustMobile,
-        outstandingBalance: 0.0
-      });
+      await api.post('/customers', { name: newCustName, mobile: newCustMobile, outstandingBalance: 0.0 });
       setNewCustName('');
       setNewCustMobile('');
       setSuccessMsg('Customer registered successfully!');
@@ -53,7 +45,6 @@ const Customers = () => {
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!activeCustomer || !paymentAmount || parseFloat(paymentAmount) <= 0) return;
-
     try {
       await api.put(`/customers/${activeCustomer.id}/pay?amountPaid=${paymentAmount}`);
       setPaymentAmount('');
@@ -73,31 +64,36 @@ const Customers = () => {
   if (loading) return <div style={loadingStyle}>Loading Credit Ledger...</div>;
 
   return (
-    <div style={containerStyle}>
-      <header style={headerFlex}>
+    <div className="cust-page">
+
+      {/* ── Header ── */}
+      <header className="cust-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Users size={28} color="#60a5fa" />
-          <h1 style={{ color: '#f1f5f9', margin: 0 }}>Credit Customers (Udhaar)</h1>
+          <h1 style={{ color: '#f1f5f9', margin: 0, fontSize: 'clamp(16px, 4vw, 22px)' }}>
+            Credit Customers (Udhaar)
+          </h1>
         </div>
         <button onClick={fetchCustomers} style={refreshBtn}><RefreshCw size={16} /></button>
       </header>
 
-      {/* SEARCH BAR */}
+      {/* ── Search ── */}
       <div style={searchBoxStyle}>
         <Search color="#94a3b8" size={20} />
-        <input 
-          type="text" 
-          placeholder="Search credit profiles by name or phone..." 
-          value={searchQuery} 
-          onChange={(e) => setSearchQuery(e.target.value)} 
+        <input
+          type="text"
+          placeholder="Search by name or phone..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           style={inputStyle}
         />
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-        
-        {/* LEFT COLUMN: REGISTER NEW CUSTOMER FORM */}
-        <div style={formCard}>
+      {/* ── Main layout ── */}
+      <div className="cust-layout">
+
+        {/* LEFT: Register form */}
+        <div className="cust-form-card">
           <h3 style={{ color: '#60a5fa', marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <UserPlus size={20} /> Register Credit Profile
           </h3>
@@ -110,33 +106,19 @@ const Customers = () => {
               <label style={labelStyle}>Full Name</label>
               <div style={inputWithIcon}>
                 <Users size={16} color="#94a3b8" />
-                <input 
-                  required 
-                  type="text" 
-                  placeholder="e.g. Ramesh Kumar" 
-                  value={newCustName} 
-                  onChange={e => setNewCustName(e.target.value)} 
-                  style={formInput} 
-                />
+                <input required type="text" placeholder="e.g. Ramesh Kumar"
+                  value={newCustName} onChange={e => setNewCustName(e.target.value)} style={formInput} />
               </div>
             </div>
-
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Mobile Number</label>
               <div style={inputWithIcon}>
                 <Phone size={16} color="#94a3b8" />
-                <input 
-                  type="text" 
-                  placeholder="e.g. 98011XXXXX" 
-                  value={newCustMobile} 
-                  onChange={e => setNewCustMobile(e.target.value)} 
-                  style={formInput} 
-                />
+                <input type="text" placeholder="e.g. 98011XXXXX"
+                  value={newCustMobile} onChange={e => setNewCustMobile(e.target.value)} style={formInput} />
               </div>
             </div>
-
             <button type="submit" style={submitRegisterBtn}>REGISTER CUSTOMER</button>
-
             {successMsg && (
               <div style={successAlert}>
                 <CheckCircle size={14} /> {successMsg}
@@ -145,78 +127,75 @@ const Customers = () => {
           </form>
         </div>
 
-        {/* MIDDLE COLUMN: CUSTOMER LIST TABLE */}
-        <div style={{ ...tableContainer, flex: 2 }}>
-          <table style={darkTable}>
-            <thead>
-              <tr style={headerRow}>
-                <th style={{ padding: '15px' }}>Customer Name</th>
-                <th>Mobile Number</th>
-                <th style={{ textAlign: 'right' }}>Outstanding Balance</th>
-                <th style={{ textAlign: 'center' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCustomers.length > 0 ? filteredCustomers.map((cust) => (
-                <tr key={cust.id} style={rowStyle}>
-                  <td style={{ padding: '15px', fontWeight: 'bold' }}>{cust.name}</td>
-                  <td style={{ color: '#94a3b8' }}>{cust.mobile || 'No Mobile'}</td>
-                  <td style={{ 
-                    textAlign: 'right', 
-                    fontWeight: 'bold', 
-                    color: cust.outstandingBalance > 0 ? '#ef4444' : '#10b981' 
-                  }}>
-                    ₹{cust.outstandingBalance?.toFixed(2) || '0.00'}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {cust.outstandingBalance > 0 ? (
-                      <button onClick={() => setActiveCustomer(cust)} style={payBtn}>
-                        Record Payment
-                      </button>
-                    ) : (
-                      <span style={{ color: '#10b981', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                        <CheckCircle size={14} /> Settled
-                      </span>
-                    )}
-                  </td>
+        {/* MIDDLE: Customer table */}
+        <div className="cust-table-card">
+          <div className="cust-table-wrap">
+            <table style={darkTable}>
+              <thead>
+                <tr style={headerRow}>
+                  <th style={{ padding: '15px' }}>Customer Name</th>
+                  <th className="cust-col-mobile">Mobile Number</th>
+                  <th style={{ textAlign: 'right' }}>Balance</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
                 </tr>
-              )) : (
-                <tr>
-                  <td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#475569' }}>
-                    No credit customer accounts found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredCustomers.length > 0 ? filteredCustomers.map((cust) => (
+                  <tr key={cust.id} style={rowStyle}>
+                    <td style={{ padding: '15px', fontWeight: 'bold' }}>{cust.name}</td>
+                    <td className="cust-col-mobile" style={{ color: '#94a3b8' }}>{cust.mobile || 'No Mobile'}</td>
+                    <td style={{
+                      textAlign: 'right', fontWeight: 'bold',
+                      color: cust.outstandingBalance > 0 ? '#ef4444' : '#10b981'
+                    }}>
+                      ₹{cust.outstandingBalance?.toFixed(2) || '0.00'}
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '10px' }}>
+                      {cust.outstandingBalance > 0 ? (
+                        <button onClick={() => setActiveCustomer(cust)} style={payBtn}>
+                          Pay
+                        </button>
+                      ) : (
+                        <span style={{ color: '#10b981', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <CheckCircle size={14} /> Settled
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#475569' }}>
+                      No credit customer accounts found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: PAYMENT COLLECTION PANEL */}
+        {/* RIGHT: Payment panel */}
         {activeCustomer && (
-          <div style={paymentFormPanel}>
+          <div className="cust-pay-panel">
             <h3 style={{ color: '#fbbf24', marginTop: 0 }}>Record Collection</h3>
             <p style={{ color: '#cbd5e1', fontSize: '14px' }}>
               Customer: <strong>{activeCustomer.name}</strong>
             </p>
             <p style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '20px' }}>
-              Current Balance: <strong style={{ color: '#ef4444' }}>₹{activeCustomer.outstandingBalance?.toFixed(2)}</strong>
+              Current Balance:{' '}
+              <strong style={{ color: '#ef4444' }}>₹{activeCustomer.outstandingBalance?.toFixed(2)}</strong>
             </p>
-
             <form onSubmit={handlePayment}>
               <div style={{ marginBottom: '15px' }}>
                 <label style={labelStyle}>Amount Received (₹)</label>
                 <div style={inputWithIcon}>
                   <span style={{ color: '#94a3b8', fontWeight: 'bold' }}>₹</span>
-                  <input 
-                    required 
-                    type="number" 
-                    step="0.01" 
-                    max={activeCustomer.outstandingBalance} 
-                    placeholder="Enter collected amount" 
-                    value={paymentAmount} 
-                    onChange={e => setPaymentAmount(e.target.value)} 
-                    style={formInput} 
-                  />
+                  <input required type="number" step="0.01"
+                    max={activeCustomer.outstandingBalance}
+                    placeholder="Enter collected amount"
+                    value={paymentAmount}
+                    onChange={e => setPaymentAmount(e.target.value)}
+                    style={formInput} />
                 </div>
               </div>
               <button type="submit" style={submitPaymentBtn}>RECORD TRANSACTION</button>
@@ -225,34 +204,137 @@ const Customers = () => {
           </div>
         )}
       </div>
+
+      <style>{`
+        /* ── Page ── */
+        .cust-page {
+          padding: 40px;
+          background-color: #0f172a;
+          min-height: 100vh;
+          box-sizing: border-box;
+        }
+
+        /* ── Header ── */
+        .cust-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 30px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        /* ── Main layout: 3-col on desktop ── */
+        .cust-layout {
+          display: flex;
+          gap: 20px;
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        /* Register form card */
+        .cust-form-card {
+          flex: 1;
+          min-width: 240px;
+          background-color: #1e293b;
+          padding: 25px;
+          border-radius: 16px;
+          border: 1px solid #334155;
+          height: fit-content;
+        }
+
+        /* Table card */
+        .cust-table-card {
+          flex: 2;
+          min-width: 0;
+          background-color: #1e293b;
+          padding: 20px;
+          border-radius: 16px;
+          border: 1px solid #334155;
+          height: fit-content;
+        }
+
+        /* Table scroll wrapper */
+        .cust-table-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .cust-table-wrap table {
+          min-width: 380px;
+        }
+
+        /* Payment panel */
+        .cust-pay-panel {
+          flex: 1;
+          min-width: 240px;
+          background-color: #1e293b;
+          padding: 30px;
+          border-radius: 16px;
+          border: 1px solid #334155;
+          height: fit-content;
+        }
+
+        /* ════════════════════════════════
+           TABLET  (≤ 900px)
+        ════════════════════════════════ */
+        @media (max-width: 900px) {
+          .cust-page {
+            padding: 20px 16px;
+          }
+          /* Stack register form above table; payment panel below */
+          .cust-layout {
+            flex-direction: column;
+          }
+          .cust-form-card,
+          .cust-table-card,
+          .cust-pay-panel {
+            width: 100%;
+            flex: none;
+            min-width: 0;
+          }
+        }
+
+        /* ════════════════════════════════
+           MOBILE  (≤ 480px)
+        ════════════════════════════════ */
+        @media (max-width: 480px) {
+          .cust-page {
+            padding: 14px 12px;
+          }
+          .cust-form-card {
+            padding: 18px 14px;
+          }
+          .cust-table-card {
+            padding: 12px 10px;
+          }
+          .cust-pay-panel {
+            padding: 18px 14px;
+          }
+          /* Hide mobile column on very small screens */
+          .cust-col-mobile {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
-// Styles
-const containerStyle = { padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', marginLeft: '240px' };
-const headerFlex = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
-const refreshBtn = { backgroundColor: '#334155', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer' };
-const searchBoxStyle = { display: 'flex', alignItems: 'center', backgroundColor: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '20px' };
-const inputStyle = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', marginLeft: '10px', outline: 'none' };
-
-// Dedicated form card style
-const formCard = { flex: 1, backgroundColor: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155', height: 'fit-content' };
-const submitRegisterBtn = { width: '100%', padding: '12px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', transition: 'background 0.2s' };
-const successAlert = { display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '8px', marginTop: '12px', fontSize: '12px' };
-
-const tableContainer = { backgroundColor: '#1e293b', padding: '30px', borderRadius: '16px', border: '1px solid #334155', height: 'fit-content' };
-const darkTable = { width: '100%', borderCollapse: 'collapse' };
-const headerRow = { color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid #334155' };
-const rowStyle = { color: '#cbd5e1', borderBottom: '1px solid #334155', fontSize: '14px' };
-const payBtn = { backgroundColor: '#fbbf24', color: '#0f172a', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
-
-const paymentFormPanel = { flex: 1, backgroundColor: '#1e293b', padding: '30px', borderRadius: '16px', border: '1px solid #334155', height: 'fit-content' };
-const labelStyle = { color: '#94a3b8', fontSize: '12px', display: 'block', marginBottom: '6px' };
-const inputWithIcon = { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px' };
-const formInput = { background: 'none', border: 'none', color: 'white', width: '100%', outline: 'none' };
+// ── Styles ────────────────────────────────────────────────────────────────────
+const refreshBtn       = { backgroundColor: '#334155', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer' };
+const searchBoxStyle   = { display: 'flex', alignItems: 'center', backgroundColor: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '20px' };
+const inputStyle       = { background: 'none', border: 'none', color: '#f1f5f9', width: '100%', marginLeft: '10px', outline: 'none' };
+const submitRegisterBtn= { width: '100%', padding: '12px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' };
+const successAlert     = { display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', padding: '10px', borderRadius: '8px', marginTop: '12px', fontSize: '12px' };
+const darkTable        = { width: '100%', borderCollapse: 'collapse' };
+const headerRow        = { color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid #334155' };
+const rowStyle         = { color: '#cbd5e1', borderBottom: '1px solid #334155', fontSize: '14px' };
+const payBtn           = { backgroundColor: '#fbbf24', color: '#0f172a', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' };
+const labelStyle       = { color: '#94a3b8', fontSize: '12px', display: 'block', marginBottom: '6px' };
+const inputWithIcon    = { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px' };
+const formInput        = { background: 'none', border: 'none', color: 'white', width: '100%', outline: 'none' };
 const submitPaymentBtn = { width: '100%', padding: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' };
-const cancelBtn = { width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', marginTop: '8px', fontSize: '13px' };
-const loadingStyle = { height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px', marginLeft: '240px' };
+const cancelBtn        = { width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', marginTop: '8px', fontSize: '13px' };
+const loadingStyle     = { height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' };
 
 export default Customers;

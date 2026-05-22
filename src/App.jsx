@@ -28,20 +28,17 @@ import Indents           from './components/Indents';
 import Settings          from './components/Settings';
 
 import {
-  Layout, TrendingUp, ShoppingCart, Package, LogOut,
+  Layout, TrendingUp, ShoppingCart, Package, LogOut, Menu, X,
   Settings as NavSettingsIcon, ClipboardList, Users, History,
   RotateCcw, FileClock, Undo2, ReceiptText, ShoppingBag,
   Truck, Boxes, Warehouse, CircleDollarSignIcon, RefreshCcw,
   BarChart2, Scale, Calendar, Eye
 } from 'lucide-react';
 
-// ─── Read-only Inventory wrapper (hides Add/Edit/Delete for Nurse & Employee) ─
-// Pass readOnly prop to Inventory — if your Inventory doesn't support it yet,
-// this wrapper hides buttons via CSS overlay trick until you wire the prop in.
+// ─── Read-only Inventory wrapper ─────────────────────────────────────────────
 const InventoryReadOnly = () => (
   <>
     <style>{`
-      /* Hide Add / Edit / Delete buttons for read-only roles */
       .inv-add-btn, .inv-edit-btn, .inv-delete-btn,
       [data-inv-action="add"], [data-inv-action="edit"], [data-inv-action="delete"] {
         display: none !important;
@@ -51,7 +48,7 @@ const InventoryReadOnly = () => (
   </>
 );
 
-// ─── Hash / Screen maps ────────────────────────────────────────────────────────
+// ─── Hash / Screen maps ───────────────────────────────────────────────────────
 const SCREEN_TO_HASH = {
   DASHBOARD:              '#/dashboard',
   BILLING:                '#/billing',
@@ -81,21 +78,38 @@ const HASH_TO_SCREEN = Object.fromEntries(
 
 const getScreenFromHash = () => HASH_TO_SCREEN[window.location.hash] || 'DASHBOARD';
 
+// ─── useWindowWidth hook ──────────────────────────────────────────────────────
+const useWindowWidth = () => {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return width;
+};
+
 // ─── AppContent ───────────────────────────────────────────────────────────────
 const AppContent = () => {
   const { hasRole, login, logout, auth } = useAuth();
+  const width = useWindowWidth();
+  const isMobile = width < 1024;
 
-  const [isReady,          setIsReady]          = useState(false);
-  const [isAuthenticated,  setIsAuthenticated]  = useState(false);
-  const [activeScreen,     setActiveScreen]     = useState('DASHBOARD');
+  const [isReady,         setIsReady]         = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [activeScreen,    setActiveScreen]    = useState('DASHBOARD');
+  const [sidebarOpen,     setSidebarOpen]     = useState(false);
 
-  // Role booleans
   const isAdmin      = hasRole('ADMIN');
   const isPharmacist = hasRole('PHARMACIST');
   const isNurse      = hasRole('NURSE');
   const isEmployee   = hasRole('EMPLOYEE');
 
-  // ── Auth check on mount ──────────────────────────────────────────────────
+  // Close sidebar when switching to desktop
+  useEffect(() => {
+    if (!isMobile) setSidebarOpen(false);
+  }, [isMobile]);
+
   useEffect(() => {
     const checkAuth = async () => {
       const token         = localStorage.getItem('token');
@@ -121,7 +135,6 @@ const AppContent = () => {
     checkAuth();
   }, []);
 
-  // ── Back/Forward ─────────────────────────────────────────────────────────
   useEffect(() => {
     const handlePopState = () => {
       const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -134,6 +147,7 @@ const AppContent = () => {
 
   const navigate = (screen) => {
     setActiveScreen(screen);
+    setSidebarOpen(false); // close sidebar on mobile after navigation
     window.history.pushState({ screen }, '', SCREEN_TO_HASH[screen] || '#/dashboard');
   };
 
@@ -150,46 +164,91 @@ const AppContent = () => {
     sessionStorage.clear();
     setIsAuthenticated(false);
     setActiveScreen('DASHBOARD');
+    setSidebarOpen(false);
     window.history.replaceState(null, '', window.location.pathname);
   };
 
   if (!isReady) return <div style={loadingStyle}>Verifying System Integrity…</div>;
   if (!isAuthenticated) return <Login onLoginSuccess={handleLoginSuccess} />;
 
-  // ─── Dashboard router — each role gets its own dashboard ─────────────────
   const DashboardComponent = () => {
     if (isNurse)    return <NurseDashboard    onNavigate={navigate} />;
     if (isEmployee) return <EmployeeDashboard onNavigate={navigate} />;
-    return <Dashboard onNavigate={navigate} />;  // ADMIN + PHARMACIST
+    return <Dashboard onNavigate={navigate} />;
   };
 
-  // ─── Sidebar — pick the right one by role ────────────────────────────────
+  const sidebarProps = {
+    activeScreen,
+    navigate,
+    onLogout: handleLogout,
+    isMobile,
+    sidebarOpen,
+    onClose: () => setSidebarOpen(false),
+  };
+
   const renderSidebar = () => {
-    if (isNurse)    return <NurseSidebar    activeScreen={activeScreen} navigate={navigate} onLogout={handleLogout} />;
-    if (isEmployee) return <EmployeeSidebar activeScreen={activeScreen} navigate={navigate} onLogout={handleLogout} />;
-    return <AdminPharmacistSidebar
-      activeScreen={activeScreen} navigate={navigate} onLogout={handleLogout}
-      isAdmin={isAdmin} isPharmacist={isPharmacist}
-    />;
+    if (isNurse)    return <NurseSidebar    {...sidebarProps} />;
+    if (isEmployee) return <EmployeeSidebar {...sidebarProps} />;
+    return <AdminPharmacistSidebar {...sidebarProps} isAdmin={isAdmin} isPharmacist={isPharmacist} />;
   };
 
   return (
-    <div style={appContainerStyle}>
+    <div style={{ display: 'flex', backgroundColor: '#0f172a', minHeight: '100vh' }}>
+
+      {/* ── Mobile overlay — dims background when sidebar open ── */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            zIndex: 20,
+          }}
+        />
+      )}
+
+      {/* ── Hamburger button — only on mobile ── */}
+      {isMobile && (
+        <button
+          onClick={() => setSidebarOpen(prev => !prev)}
+          style={{
+            position: 'fixed', top: '16px', left: '16px',
+            zIndex: 30,
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '8px',
+            padding: '8px',
+            cursor: 'pointer',
+            color: '#60a5fa',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      )}
+
+      {/* ── Sidebar ── */}
       {renderSidebar()}
 
-      <div style={contentAreaStyle}>
+      {/* ── Content area ── */}
+      <div style={{
+        flex: 1,
+        backgroundColor: '#0f172a',
+        minHeight: '100vh',
+        marginLeft: isMobile ? '0' : '240px',
+        width: isMobile ? '100%' : 'calc(100% - 240px)',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
+        paddingTop: isMobile ? '60px' : '0', // space for hamburger on mobile
+      }}>
         {activeScreen === 'DASHBOARD'               && <DashboardComponent />}
         {activeScreen === 'ATTENDANCE'              && <Attendance />}
-
-        {/* ── Admin + Pharmacist only ── */}
         {activeScreen === 'BILLING'                 && (isAdmin || isPharmacist) && <Billing />}
         {activeScreen === 'TRANSACTIONS'            && (isAdmin || isPharmacist) && <Transactions />}
         {activeScreen === 'CUSTOMERS'               && (isAdmin || isPharmacist) && <Customers />}
         {activeScreen === 'SALES_HISTORY'           && (isAdmin || isPharmacist) && <SalesHistory />}
         {activeScreen === 'SALE_RETURN'             && (isAdmin || isPharmacist) && <SaleReturn />}
         {activeScreen === 'RETURN_HISTORY'          && (isAdmin || isPharmacist) && <SaleReturnHistory />}
-
-        {/* ── Admin only ── */}
         {activeScreen === 'PURCHASE'                && isAdmin && <Purchase />}
         {activeScreen === 'SUPPLIERS'               && isAdmin && <Suppliers />}
         {activeScreen === 'RETURN_SUPPLIER'         && isAdmin && <ReturnSupplier />}
@@ -200,36 +259,54 @@ const AppContent = () => {
         {activeScreen === 'FINANCE'                 && isAdmin && <Finance />}
         {activeScreen === 'STAFF'                   && isAdmin && <Staff />}
         {activeScreen === 'SETTINGS'                && isAdmin && <Settings />}
-
-        {/* ── Inventory: full for Admin/Pharmacist, read-only for Nurse/Employee ── */}
         {activeScreen === 'INVENTORY' && (isAdmin || isPharmacist) && <Inventory />}
         {activeScreen === 'INVENTORY' && (isNurse || isEmployee)   && <InventoryReadOnly />}
-
-        {/* ── Indents: Nurse + Pharmacist + Admin ── */}
-        {activeScreen === 'INDENTS' && (isNurse || isPharmacist || isAdmin) && <Indents />}
+        {activeScreen === 'INDENTS'   && (isNurse || isPharmacist || isAdmin) && <Indents />}
       </div>
     </div>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR: Admin + Pharmacist  (full sidebar, unchanged from original)
+// SHARED SIDEBAR WRAPPER — handles slide in/out on mobile
 // ─────────────────────────────────────────────────────────────────────────────
-const AdminPharmacistSidebar = ({ activeScreen, navigate, onLogout, isAdmin, isPharmacist }) => (
-  <div style={sidebarStyle}>
+const SidebarWrapper = ({ isMobile, sidebarOpen, onClose, children }) => (
+  <div style={{
+    width: '240px',
+    backgroundColor: '#1e293b',
+    borderRight: '1px solid #334155',
+    position: 'fixed',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    zIndex: 25,
+    overflowY: 'auto',
+    // Slide transition on mobile
+    transform: isMobile
+      ? (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)')
+      : 'translateX(0)',
+    transition: 'transform 0.3s ease',
+    top: 0,
+    left: 0,
+  }}>
+    {children}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIDEBAR: Admin + Pharmacist
+// ─────────────────────────────────────────────────────────────────────────────
+const AdminPharmacistSidebar = ({ activeScreen, navigate, onLogout, isAdmin, isPharmacist, isMobile, sidebarOpen, onClose }) => (
+  <SidebarWrapper isMobile={isMobile} sidebarOpen={sidebarOpen} onClose={onClose}>
     <div style={logoStyle}><Layout size={24} style={{ marginRight: '10px' }} /> RxManager Pro</div>
 
-    {/* MAIN */}
     <div style={sectionLabel}>Main</div>
-    {(isAdmin || isPharmacist) && <>
     <NavBtn label="Dashboard"   icon={<TrendingUp size={18}/>}           screen="DASHBOARD"   active={activeScreen} navigate={navigate} />
-    </>}
     {(isAdmin || isPharmacist) && <>
       <NavBtn label="New Billing" icon={<CircleDollarSignIcon size={18}/>} screen="BILLING"     active={activeScreen} navigate={navigate} />
       <NavBtn label="Inventory"   icon={<Warehouse size={18}/>}            screen="INVENTORY"   active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* SALES */}
     {(isAdmin || isPharmacist) && <>
       <div style={sectionLabel}>Sales</div>
       <NavBtn label="Stock Ledger"   icon={<ClipboardList size={18}/>} screen="TRANSACTIONS"   active={activeScreen} navigate={navigate} />
@@ -239,7 +316,6 @@ const AdminPharmacistSidebar = ({ activeScreen, navigate, onLogout, isAdmin, isP
       <NavBtn label="Return History" icon={<History size={18}/>}       screen="RETURN_HISTORY" active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* PURCHASE */}
     {isAdmin && <>
       <div style={sectionLabel}>Purchase</div>
       <NavBtn label="Purchase"              icon={<ShoppingCart size={18}/>} screen="PURCHASE"                active={activeScreen} navigate={navigate} />
@@ -248,7 +324,6 @@ const AdminPharmacistSidebar = ({ activeScreen, navigate, onLogout, isAdmin, isP
       <NavBtn label="Return History (Sup.)" icon={<History size={18}/>}      screen="RETURN_SUPPLIER_HISTORY" active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* FINANCE */}
     {isAdmin && <>
       <div style={sectionLabel}>Finance</div>
       <NavBtn label="Expenses"      icon={<CircleDollarSignIcon size={18}/>} screen="EXPENSES"      active={activeScreen} navigate={navigate} />
@@ -257,87 +332,65 @@ const AdminPharmacistSidebar = ({ activeScreen, navigate, onLogout, isAdmin, isP
       <NavBtn label="Finance & P&L" icon={<BarChart2 size={18}/>}            screen="FINANCE"       active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* HR */}
     {isAdmin && <>
       <div style={sectionLabel}>HR</div>
-      <NavBtn label="Staff"      icon={<Users size={18}/>}    screen="STAFF"      active={activeScreen} navigate={navigate} />
+      <NavBtn label="Staff" icon={<Users size={18}/>} screen="STAFF" active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* ATTENDANCE — all roles */}
     <div style={sectionLabel}>My Account</div>
     <NavBtn label="My Attendance" icon={<Calendar size={18}/>} screen="ATTENDANCE" active={activeScreen} navigate={navigate} />
 
-    {/* HOSPITAL */}
     {(isPharmacist || isAdmin) && <>
       <div style={sectionLabel}>Hospital</div>
       <NavBtn label="Indents" icon={<ClipboardList size={18}/>} screen="INDENTS" active={activeScreen} navigate={navigate} />
     </>}
 
-    {/* SYSTEM */}
     {isAdmin && <>
       <div style={sectionLabel}>System</div>
       <NavBtn label="Settings" icon={<NavSettingsIcon size={18}/>} screen="SETTINGS" active={activeScreen} navigate={navigate} />
     </>}
 
     <LogoutBtn onLogout={onLogout} />
-  </div>
+  </SidebarWrapper>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SIDEBAR: Nurse
-// Dashboard | My Indents | Inventory (read-only) | My Attendance | Logout
 // ─────────────────────────────────────────────────────────────────────────────
-const NurseSidebar = ({ activeScreen, navigate, onLogout }) => (
-  <div style={sidebarStyle}>
-    <div style={logoStyle}>
-      <Layout size={24} style={{ marginRight: '10px' }} /> RxManager Pro
-    </div>
-
+const NurseSidebar = ({ activeScreen, navigate, onLogout, isMobile, sidebarOpen, onClose }) => (
+  <SidebarWrapper isMobile={isMobile} sidebarOpen={sidebarOpen} onClose={onClose}>
+    <div style={logoStyle}><Layout size={24} style={{ marginRight: '10px' }} /> RxManager Pro</div>
     <div style={sectionLabel}>Main</div>
-    <NavBtn label="Dashboard"    icon={<TrendingUp size={18}/>}    screen="DASHBOARD"  active={activeScreen} navigate={navigate} />
-
+    <NavBtn label="Dashboard"     icon={<TrendingUp size={18}/>}    screen="DASHBOARD"  active={activeScreen} navigate={navigate} />
     <div style={sectionLabel}>Hospital</div>
-    <NavBtn label="My Indents"   icon={<ClipboardList size={18}/>} screen="INDENTS"    active={activeScreen} navigate={navigate} />
-    {/* <NavBtn label="Inventory"    icon={<Eye size={18}/>}           screen="INVENTORY"  active={activeScreen} navigate={navigate} /> */}
-
+    <NavBtn label="My Indents"    icon={<ClipboardList size={18}/>} screen="INDENTS"    active={activeScreen} navigate={navigate} />
     <div style={sectionLabel}>My Account</div>
-    <NavBtn label="My Attendance" icon={<Calendar size={18}/>}    screen="ATTENDANCE" active={activeScreen} navigate={navigate} />
-
+    <NavBtn label="My Attendance" icon={<Calendar size={18}/>}      screen="ATTENDANCE" active={activeScreen} navigate={navigate} />
     <LogoutBtn onLogout={onLogout} />
-  </div>
+  </SidebarWrapper>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR: Employee / Staff
-// Dashboard | Inventory (read-only) | My Attendance | Logout
+// SIDEBAR: Employee
 // ─────────────────────────────────────────────────────────────────────────────
-const EmployeeSidebar = ({ activeScreen, navigate, onLogout }) => (
-  <div style={sidebarStyle}>
-    <div style={logoStyle}>
-      <Layout size={24} style={{ marginRight: '10px' }} /> RxManager Pro
-    </div>
-
+const EmployeeSidebar = ({ activeScreen, navigate, onLogout, isMobile, sidebarOpen, onClose }) => (
+  <SidebarWrapper isMobile={isMobile} sidebarOpen={sidebarOpen} onClose={onClose}>
+    <div style={logoStyle}><Layout size={24} style={{ marginRight: '10px' }} /> RxManager Pro</div>
     <div style={sectionLabel}>Main</div>
     <NavBtn label="Dashboard"     icon={<TrendingUp size={18}/>} screen="DASHBOARD"  active={activeScreen} navigate={navigate} />
-
     <div style={sectionLabel}>Inventory</div>
     <NavBtn label="Inventory"     icon={<Eye size={18}/>}        screen="INVENTORY"  active={activeScreen} navigate={navigate} />
-
     <div style={sectionLabel}>My Account</div>
-    <NavBtn label="My Attendance" icon={<Calendar size={18}/>}  screen="ATTENDANCE" active={activeScreen} navigate={navigate} />
-
+    <NavBtn label="My Attendance" icon={<Calendar size={18}/>}   screen="ATTENDANCE" active={activeScreen} navigate={navigate} />
     <LogoutBtn onLogout={onLogout} />
-  </div>
+  </SidebarWrapper>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared sidebar atoms
+// Shared atoms
 // ─────────────────────────────────────────────────────────────────────────────
 const NavBtn = ({ label, icon, screen, active, navigate }) => (
-  <button
-    onClick={() => navigate(screen)}
-    style={active === screen ? navBtnActive : navBtn}
-  >
+  <button onClick={() => navigate(screen)} style={active === screen ? navBtnActive : navBtn}>
     {icon} {label}
   </button>
 );
@@ -349,36 +402,12 @@ const LogoutBtn = ({ onLogout }) => (
 );
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const appContainerStyle = { 
-  display: 'flex', 
-  backgroundColor: '#0f172a', 
-  minHeight: '100vh' 
-};
-const sidebarStyle = { 
-  width: '240px', 
-  backgroundColor: '#1e293b', 
-  borderRight: '1px solid #334155', 
-  position: 'fixed', 
-  height: '100vh', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  zIndex: 10, 
-  overflowY: 'auto' 
-};
-const logoStyle         = { padding: '30px 20px', fontSize: '20px', fontWeight: 'bold', color: '#60a5fa', display: 'flex', alignItems: 'center' };
-const contentAreaStyle = { 
-  flex: 1, 
-  backgroundColor: '#0f172a',
-  minHeight: '100vh',
-  width: 'calc(100% - 240px)',
-  overflowX: 'hidden',
-  boxSizing: 'border-box',
-};
-const navBtn            = { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '15px 20px', background: 'none', border: 'none', borderLeft: '4px solid transparent', color: '#94a3b8', cursor: 'pointer', textAlign: 'left', fontSize: '15px' };
-const navBtnActive      = { ...navBtn, color: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', borderLeft: '4px solid #60a5fa' };
-const logoutBtnStyle    = { ...navBtn, marginTop: 'auto', color: '#ef4444', marginBottom: '20px' };
-const loadingStyle      = { height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' };
-const sectionLabel      = { padding: '16px 20px 4px', fontSize: '10px', fontWeight: '600', color: '#475569', letterSpacing: '1px', textTransform: 'uppercase' };
+const logoStyle      = { padding: '30px 20px', fontSize: '20px', fontWeight: 'bold', color: '#60a5fa', display: 'flex', alignItems: 'center' };
+const navBtn         = { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '15px 20px', background: 'none', border: 'none', borderLeft: '4px solid transparent', color: '#94a3b8', cursor: 'pointer', textAlign: 'left', fontSize: '15px' };
+const navBtnActive   = { ...navBtn, color: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', borderLeft: '4px solid #60a5fa' };
+const logoutBtnStyle = { ...navBtn, marginTop: 'auto', color: '#ef4444', marginBottom: '20px' };
+const loadingStyle   = { height: '100vh', backgroundColor: '#0f172a', color: '#60a5fa', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' };
+const sectionLabel   = { padding: '16px 20px 4px', fontSize: '10px', fontWeight: '600', color: '#475569', letterSpacing: '1px', textTransform: 'uppercase' };
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 const App = () => (

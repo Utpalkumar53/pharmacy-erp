@@ -22,26 +22,23 @@ const EmployeeDashboard = ({ onNavigate }) => {
   const [inventory, setInventory]     = useState([]);
   const [salaryLoading, setSalaryLoading] = useState(false);
 
-  const now       = new Date();
-  const username  = auth?.username || 'Employee';
-  const todayStr  = now.toLocaleDateString('en-IN', {
+  const now      = new Date();
+  const username = auth?.username || 'Employee';
+  const todayStr = now.toLocaleDateString('en-IN', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
   });
 
   const fetchAll = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true); else setLoading(true);
-
       const [todayRes, monthRes, invRes] = await Promise.all([
         api.get('/staff/attendance/my/today').catch(() => ({ data: null })),
         api.get(`/staff/attendance/my/month?month=${now.getMonth() + 1}&year=${now.getFullYear()}`).catch(() => ({ data: [] })),
         api.get('/medicines').catch(() => ({ data: [] })),
       ]);
-
       setTodayAtt(todayRes.data);
       setMonthAtt(Array.isArray(monthRes.data) ? monthRes.data : []);
       setInventory((invRes.data || []).slice(0, 8));
-
     } catch (err) {
       console.error('EmployeeDashboard fetch error:', err);
     } finally {
@@ -53,29 +50,24 @@ const EmployeeDashboard = ({ onNavigate }) => {
   const fetchSalary = async () => {
     setSalaryLoading(true);
     try {
-        const res = await api.get(
-            `/staff/salary-report/my?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
-        );
-        setSalary(res.data);
+      const res = await api.get(
+        `/staff/salary-report/my?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+      );
+      setSalary(res.data);
     } catch {
-        setSalary(null);
+      setSalary(null);
     } finally {
-        setSalaryLoading(false);
+      setSalaryLoading(false);
     }
-};
+  };
 
-  useEffect(() => {
-    fetchAll();
-    fetchSalary();
-  }, []);
+  useEffect(() => { fetchAll(); fetchSalary(); }, []);
 
-  // Month attendance stats
-  const daysPresent  = monthAtt.filter(a => a.status === 'PRESENT').length;
-  const totalLogged  = monthAtt.length;
-  const workingDays  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysPresent   = monthAtt.filter(a => a.status === 'PRESENT').length;
+  const totalLogged   = monthAtt.length;
+  const workingDays   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const attendancePct = workingDays > 0 ? Math.round((daysPresent / workingDays) * 100) : 0;
 
-  // Calc hours worked today
   let hoursToday = null;
   if (todayAtt?.checkInTime && todayAtt?.checkOutTime) {
     const [ih, im] = todayAtt.checkInTime.split(':').map(Number);
@@ -92,14 +84,14 @@ const EmployeeDashboard = ({ onNavigate }) => {
   );
 
   return (
-    <div style={page}>
+    <div className="emp-page">
 
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div style={headerRow}>
+      {/* ── Header ── */}
+      <div className="emp-header-row">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
             <UserCheck size={22} color="#34d399" />
-            <h1 style={h1}>Welcome, {username}</h1>
+            <h1 className="emp-h1">Welcome, {username}</h1>
           </div>
           <p style={subtitle}>{todayStr}</p>
         </div>
@@ -109,11 +101,10 @@ const EmployeeDashboard = ({ onNavigate }) => {
         </button>
       </div>
 
-      {/* ── Today's Status Banner ─────────────────────────────────────── */}
-      <div style={{
-        ...banner,
+      {/* ── Today's Status Banner ── */}
+      <div className="emp-banner" style={{
         backgroundColor: todayAtt ? 'rgba(16,185,129,0.08)' : 'rgba(249,115,22,0.08)',
-        borderColor: todayAtt ? 'rgba(16,185,129,0.3)' : 'rgba(249,115,22,0.3)',
+        borderColor:     todayAtt ? 'rgba(16,185,129,0.3)'  : 'rgba(249,115,22,0.3)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {todayAtt
@@ -137,69 +128,45 @@ const EmployeeDashboard = ({ onNavigate }) => {
         <button onClick={() => onNavigate('ATTENDANCE')} style={linkBtn}>View Attendance →</button>
       </div>
 
-      {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-      <div style={cardGrid}>
-        <StatCard
-          icon={<Calendar size={20} color="#60a5fa"/>}
-          label="Days Present This Month"
-          value={daysPresent}
-          sub={`of ${workingDays} working days`}
-          color="#60a5fa"
-        />
-        <StatCard
-          icon={<TrendingUp size={20} color="#34d399"/>}
-          label="Attendance This Month"
-          value={`${attendancePct}%`}
-          sub={totalLogged > 0 ? `${daysPresent} present / ${totalLogged} logged` : 'No records yet'}
-          color="#34d399"
-        />
-        <StatCard
-          icon={<Clock size={20} color="#a78bfa"/>}
-          label="Today's Hours"
-          value={hoursToday || (todayAtt ? 'In Progress' : '—')}
-          sub={todayAtt?.checkInTime ? `In at ${todayAtt.checkInTime.substring(0,5)}` : 'Not clocked in'}
-          color="#a78bfa"
-          isText
-        />
-        <StatCard
-          icon={<IndianRupee size={20} color="#fbbf24"/>}
-          label="Est. Salary This Month"
-          value={salary ? `₹${(salary.finalPayableAmount || 0).toLocaleString('en-IN')}` : salaryLoading ? '...' : '—'}
-          sub={salary ? `Base: ₹${(salary.baseMonthlySalary || 0).toLocaleString('en-IN')}` : 'Not available'}
-          color="#fbbf24"
-          isText
-        />
+      {/* ── Stat Cards ── */}
+      <div className="emp-card-grid">
+        <StatCard icon={<Calendar size={20} color="#60a5fa"/>}    label="Days Present This Month"  value={daysPresent}           sub={`of ${workingDays} working days`}                                              color="#60a5fa" />
+        <StatCard icon={<TrendingUp size={20} color="#34d399"/>}  label="Attendance This Month"    value={`${attendancePct}%`}   sub={totalLogged > 0 ? `${daysPresent} present / ${totalLogged} logged` : 'No records yet'} color="#34d399" />
+        <StatCard icon={<Clock size={20} color="#a78bfa"/>}       label="Today's Hours"            value={hoursToday || (todayAtt ? 'In Progress' : '—')} sub={todayAtt?.checkInTime ? `In at ${todayAtt.checkInTime.substring(0,5)}` : 'Not clocked in'} color="#a78bfa" isText />
+        <StatCard icon={<IndianRupee size={20} color="#fbbf24"/>} label="Est. Salary This Month"   value={salary ? `₹${(salary.finalPayableAmount || 0).toLocaleString('en-IN')}` : salaryLoading ? '...' : '—'} sub={salary ? `Base: ₹${(salary.baseMonthlySalary || 0).toLocaleString('en-IN')}` : 'Not available'} color="#fbbf24" isText />
       </div>
 
-      {/* ── Main Grid ───────────────────────────────────────────────────── */}
-      <div style={mainGrid}>
+      {/* ── Main Grid ── */}
+      <div className="emp-main-grid">
 
-        {/* LEFT — Monthly Attendance Calendar */}
+        {/* LEFT — Calendar */}
         <div style={card}>
           <div style={cardHeader}>
-            <h3 style={cardTitle}><Calendar size={16} color="#60a5fa"/> {MONTHS[now.getMonth()]} {now.getFullYear()} Attendance</h3>
+            <h3 style={cardTitle}>
+              <Calendar size={16} color="#60a5fa"/> {MONTHS[now.getMonth()]} {now.getFullYear()} Attendance
+            </h3>
             <button onClick={() => onNavigate('ATTENDANCE')} style={linkBtnSm}>Full History →</button>
           </div>
 
-          {/* Mini calendar dots */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '16px' }}>
             {['S','M','T','W','T','F','S'].map((d, i) => (
               <div key={i} style={{ textAlign: 'center', color: '#475569', fontSize: '11px', fontWeight: 700, padding: '4px 0' }}>{d}</div>
             ))}
             {(() => {
-              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+              const firstDay   = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
               const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
               const cells = [];
               for (let i = 0; i < firstDay; i++) cells.push(<div key={`blank-${i}`} />);
               for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const rec = monthAtt.find(a => a.date === dateStr || (a.checkInTime && new Date(a.date || a.checkInTime).getDate() === d));
-                const isToday = d === now.getDate();
+                const dateStr  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const rec      = monthAtt.find(a => a.date === dateStr || (a.checkInTime && new Date(a.date || a.checkInTime).getDate() === d));
+                const isToday   = d === now.getDate();
                 const isPresent = rec?.status === 'PRESENT';
-                const isFuture = d > now.getDate();
+                const isFuture  = d > now.getDate();
                 cells.push(
                   <div key={d} style={{
-                    width: '100%', aspectRatio: '1', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', aspectRatio: '1', borderRadius: '6px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '11px', fontWeight: isToday ? 800 : 500,
                     backgroundColor: isToday ? '#2563eb' : isPresent ? 'rgba(16,185,129,0.2)' : isFuture ? 'transparent' : 'rgba(239,68,68,0.08)',
                     color: isToday ? 'white' : isPresent ? '#10b981' : isFuture ? '#334155' : '#475569',
@@ -214,15 +181,15 @@ const EmployeeDashboard = ({ onNavigate }) => {
           </div>
 
           {/* Legend */}
-          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#64748b' }}>
+          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#64748b', flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)' }}/>Present
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)' }}/> Present
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: 'rgba(239,68,68,0.08)' }}/>Absent
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: 'rgba(239,68,68,0.08)' }}/> Absent
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#2563eb' }}/>Today
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#2563eb' }}/> Today
             </span>
           </div>
         </div>
@@ -241,7 +208,7 @@ const EmployeeDashboard = ({ onNavigate }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                 {[
                   { label: 'Base Monthly Salary', value: `₹${(salary.baseMonthlySalary || 0).toLocaleString('en-IN')}`, color: '#94a3b8' },
-                  { label: 'Days Present',         value: salary.daysPresent,      color: '#10b981' },
+                  { label: 'Days Present',         value: salary.daysPresent,       color: '#10b981' },
                   { label: 'Days Absent',          value: (salary.totalDaysInMonth || 0) - (salary.daysPresent || 0), color: '#f87171' },
                   { label: 'Net Payable',          value: `₹${(salary.finalPayableAmount || 0).toLocaleString('en-IN')}`, color: '#fbbf24', large: true },
                 ].map((row, i) => (
@@ -271,15 +238,14 @@ const EmployeeDashboard = ({ onNavigate }) => {
           <div style={card}>
             <h3 style={{ ...cardTitle, marginBottom: '14px' }}>Quick Access</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <QuickAction icon={<Calendar size={15}/>}  label="My Attendance" color="#60a5fa" onClick={() => onNavigate('ATTENDANCE')} />
-              <QuickAction icon={<Package size={15}/>}   label="View Inventory" color="#34d399" onClick={() => onNavigate('INVENTORY')} />
+              <QuickAction icon={<Calendar size={15}/>} label="My Attendance" color="#60a5fa" onClick={() => onNavigate('ATTENDANCE')} />
+              <QuickAction icon={<Package size={15}/>}  label="View Inventory" color="#34d399" onClick={() => onNavigate('INVENTORY')} />
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* ── Inventory View (read-only) ─────────────────────────────────── */}
+      {/* ── Inventory Table ── */}
       <div style={{ ...card, marginTop: '20px' }}>
         <div style={cardHeader}>
           <h3 style={cardTitle}><Package size={16} color="#34d399"/> Inventory Overview (Read Only)</h3>
@@ -288,42 +254,141 @@ const EmployeeDashboard = ({ onNavigate }) => {
         {inventory.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '30px', color: '#475569', fontSize: '13px' }}>No inventory data.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Medicine', 'Rack', 'Batch No.', 'Expiry', 'Stock'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {inventory.map((med, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
-                  <td style={tdStyle}><span style={{ color: '#e2e8f0', fontWeight: 500 }}>{med.name}</span></td>
-                  <td style={tdStyle}><span style={{ color: '#94a3b8', fontSize: '12px' }}>{med.rackNumber || '—'}</span></td>
-                  <td style={tdStyle}><span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '12px' }}>{med.batchNo || '—'}</span></td>
-                  <td style={tdStyle}>
-                    <span style={{ color: '#94a3b8', fontSize: '12px' }}>
-                      {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString('en-IN') : '—'}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      color: med.stockQuantity <= (med.minStockLevel || 10) ? '#f97316' : '#10b981',
-                      fontWeight: 700, fontSize: '13px'
-                    }}>
-                      {med.stockQuantity} units
-                    </span>
-                  </td>
+          <div className="emp-table-wrap">
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px' }}>
+              <thead>
+                <tr>
+                  {['Medicine', 'Rack', 'Batch No.', 'Expiry', 'Stock'].map(h => (
+                    <th key={h} style={thStyle}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {inventory.map((med, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
+                    <td style={tdStyle}><span style={{ color: '#e2e8f0', fontWeight: 500 }}>{med.name}</span></td>
+                    <td style={tdStyle}><span style={{ color: '#94a3b8', fontSize: '12px' }}>{med.rackNumber || '—'}</span></td>
+                    <td style={tdStyle}><span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '12px' }}>{med.batchNo || '—'}</span></td>
+                    <td style={tdStyle}>
+                      <span style={{ color: '#94a3b8', fontSize: '12px' }}>
+                        {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString('en-IN') : '—'}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        color: med.stockQuantity <= (med.minStockLevel || 10) ? '#f97316' : '#10b981',
+                        fontWeight: 700, fontSize: '13px'
+                      }}>
+                        {med.stockQuantity} units
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* ── Page ── */
+        .emp-page {
+          padding: 32px;
+          background-color: #0f172a;
+          min-height: 100vh;
+          box-sizing: border-box;
+        }
+
+        /* ── Header ── */
+        .emp-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .emp-h1 {
+          color: #f1f5f9;
+          margin: 0;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        /* ── Banner ── */
+        .emp-banner {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 14px 18px;
+          border-radius: 12px;
+          border: 1px solid;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        /* ── Stat cards grid ── */
+        .emp-card-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        /* ── Main 2-col grid ── */
+        .emp-main-grid {
+          display: grid;
+          grid-template-columns: 1.4fr 1fr;
+          gap: 20px;
+        }
+
+        /* ── Inventory table scroll ── */
+        .emp-table-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* ════════════════════════════════
+           TABLET  (≤ 1024px)
+        ════════════════════════════════ */
+        @media (max-width: 1024px) {
+          .emp-card-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .emp-main-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* ════════════════════════════════
+           MOBILE  (≤ 480px)
+        ════════════════════════════════ */
+        @media (max-width: 480px) {
+          .emp-page {
+            padding: 14px 12px;
+          }
+          .emp-h1 {
+            font-size: 18px;
+          }
+          .emp-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .emp-card-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .emp-banner {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .emp-banner button {
+            width: 100%;
+          }
+        }
       `}</style>
     </div>
   );
@@ -350,21 +415,15 @@ const QuickAction = ({ icon, label, color, onClick }) => (
 );
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
-const page       = { padding: '32px', marginLeft: '240px', backgroundColor: '#0f172a', minHeight: '100vh' };
-const loadingStyle = { height: '100vh', backgroundColor: '#0f172a', color: '#34d399', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', fontSize: '16px', marginLeft: '240px' };
-const headerRow  = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' };
-const h1         = { color: '#f1f5f9', margin: 0, fontSize: '24px', fontWeight: 700 };
-const subtitle   = { color: '#64748b', margin: 0, fontSize: '13px' };
-const refreshBtn = { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 };
-const banner     = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: '12px', border: '1px solid', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' };
-const linkBtn    = { background: 'none', border: '1px solid #334155', color: '#60a5fa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '6px' };
-const cardGrid   = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' };
-const mainGrid   = { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' };
-const card       = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '14px', padding: '22px' };
-const cardHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' };
-const cardTitle  = { color: '#f1f5f9', margin: 0, fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' };
-const linkBtnSm  = { background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '12px', fontWeight: 600 };
-const thStyle    = { textAlign: 'left', padding: '8px 10px', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600, borderBottom: '1px solid #334155' };
-const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' };
+const loadingStyle = { height: '100vh', backgroundColor: '#0f172a', color: '#34d399', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', fontSize: '16px' };
+const subtitle     = { color: '#64748b', margin: 0, fontSize: '13px' };
+const refreshBtn   = { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 };
+const linkBtn      = { background: 'none', border: '1px solid #334155', color: '#60a5fa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '6px' };
+const card         = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '14px', padding: '22px' };
+const cardHeader   = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' };
+const cardTitle    = { color: '#f1f5f9', margin: 0, fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' };
+const linkBtnSm    = { background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '12px', fontWeight: 600 };
+const thStyle      = { textAlign: 'left', padding: '8px 10px', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600, borderBottom: '1px solid #334155' };
+const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' };
 
 export default EmployeeDashboard;
