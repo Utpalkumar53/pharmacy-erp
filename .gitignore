@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Compiled class files
 target/
 *.class
@@ -25,3 +26,8 @@ Thumbs.db
 .env
 *.env
 target/
+=======
+node_modules/ 
+.env 
+build/ 
+>>>>>>> 3e708b3287810e14cb16e7b3f92be247fdd40a50
