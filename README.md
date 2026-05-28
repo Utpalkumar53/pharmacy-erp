@@ -1,48 +1,64 @@
-# Pharmacy ERP (Hospital Management System)
+# RxManager Pro - Enterprise Hospital Pharmacy ERP
 
-A professional Java Spring Boot ERP designed for hospital pharmacies to manage inventory, sales, and internal ward distribution with a focus on data integrity and medical safety.
+A high-performance, production-grade Hospital Pharmacy Enterprise Resource Planning (ERP) system built using Java Spring Boot and MongoDB Cloud Atlas. This system is designed to streamline end-to-end pharmacy operations, tracking everything from supplier supply chains to critical, doctor-authorized ward distributions while enforcing rigorous financial accounting, medical safety controls, and statutory tax compliance.
 
 ## 🚀 Key Features
 
-- **Smart Stock Guard:** Implements a safety reserve (20 units) for all medicines. Normal sales are blocked when stock is low to ensure life-saving drugs remain available.
-- **Emergency Overrides:** Allows critical stock issuance only with **Doctor Authorization**, creating a secure audit trail.
-- **Balanced Financial Ledger:** Separates 'Counter Sales' from 'Internal Hospital Usage' for accurate balance sheets and GST reporting.
-- **Automated PDF Invoicing:** Generates professional GST-compliant invoices for every transaction.
-- **Expiry & Low-Stock Alerts:** Proactive tracking to prevent the sale of expired medication.
+### 📦 Smart Inventory & Supply Chain Management
+* **Smart Stock Guard:** Implements a safety reserve threshold (20 units) for all life-saving medications. Standard counter sales are capped when stock hits this buffer to guarantee availability for critical emergencies.
+* **Emergency Overrides & Indents:** Restricts high-priority stock issuance via **Emergency Ward Indents**, requiring explicit **Doctor Authorization** and creating a clear cryptographic audit trail.
+* **Supplier & Purchase Management:** Tracks purchase orders, automatically recalculates batch numbers, updates cost prices on stock intake, handles purchase returns, and flags upcoming medication expiry dates proactively.
+
+### 💼 Comprehensive Financial & Tax Ledger
+* **Balanced Daily Cashbooks:** Automates closing balances by segregating day-to-day pharmacy counter cash inflows from credit balances and internal hospital usage.
+* **GSTR-3B & Tax Compliance Reporting:** Computes operational SGST/CGST breakdown parameters automatically on sales logs, generating structured ledger sheets for clean monthly **GSTR-3B filings**.
+* **Credit Customer Management:** Tracks running credit accounts for recurring hospital patients, logs outstanding debt sheets, and archives step-by-step payment history.
+* **Automated Billing & PDF Invoicing:** Uses an internal styling template to generate and export professional, GST-compliant transactional PDFs for all commercial transactions.
+
+### 👥 Staff, Attendance & Security Architecture
+* **Role-Based Access Control (RBAC):** Restricts operational views using hard security boundaries across enterprise profiles (`ROLE_ADMIN`, `ROLE_PHARMACIST`, and `ROLE_STAFF`).
+* **Staff Profiles & Attendance Monitoring:** Tracks employee shifts, clock-in/clock-out timestamps, daily attendance records, and integrates referral audit tracking for transparent staff performance reviews.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Java 17, Spring Boot 3, Spring Security
-- **Database:** MongoDB (NoSQL)
-- **Security:** Role-Based Access Control (RBAC)
-- **Build Tool:** Maven
+* **Backend Core:** Java 24, Spring Boot 3.5.13, Spring Data MongoDB
+* **Security Infrastructure:** Spring Security 6.5, JSON Web Tokens (JWT Validation Gateway), BCrypt Password Hashing
+* **Database & Cloud Storage:** MongoDB Atlas (Cloud Tiered Replication Cluster Architecture)
+* **Reporting Engines:** iText PDF Core, Apache POI (Excel Ledger Data Extractions)
+* **Build Automation & Tools:** Maven, Project Lombok, Developer LiveReload Configuration Tools
 
-## 📈 Accounting Logic
-The system accounts for three distinct revenue streams to ensure the bank balance matches the inventory:
-1. **Commercial Sales:** Direct cash/credit transactions at the pharmacy counter.
-2. **Normal Ward Indents:** Standard internal distribution to hospital floors.
-3. **Emergency Indents:** High-priority, doctor-authorized medical issuance.
+---
 
-## 📝 How to Run
-1. Clone the repository: `git clone [your-link]`
-2. Ensure MongoDB is running on `localhost:27017`.
-3. Run the application: `./mvnw spring-boot:run`
+## 📈 Enterprise Accounting & Distribution Logic
+
+The application divides the asset flow into three distinct pipelines to ensure real-time inventory balances precisely match cash registers:
+
+1. **Commercial Counter Sales:** Direct customer-facing transactions calculating flat tax indices, processing credit extensions, and issuing point-of-sale receipts.
+2. **Normal Ward Indents:** Standard internal inventory distribution responding to routine floor nurse restocking requests across standard hospital wings.
+3. **Emergency Indents:** Rapid-response medical asset allocation bypassing general access gates using forced Doctor ID validation logs.
+
+---
 
 ## ⚙️ Environment Configuration
 
-The application requires specific environment variables to handle security and automated systems. 
-
-### 1. Backend Setup (`.env` or Application Properties)
-Create a `.env` file in the root backend directory, or supply these environment variables:
+The ERP infrastructure utilizes explicit environment routing flags. Create an enterprise environment variable profile or a secure `.env` file in your root workspace:
 
 ```properties
-# Mail Service (SMTP)
-MAIL_USERNAME=your_gmail@gmail.com
-MAIL_PASSWORD=your_app_specific_password
+# ── ☁️ PRODUCTION MONGO ATLAS CLOUD CONFIG ──
+spring.data.mongodb.uri=mongodb+srv://utpalkumarkashyap53_db_user:j053oBrdsSCDKumH@rxmanagerclusture.nkxqgol.mongodb.net/pharmacy_erp?retryWrites=true&w=majority&tlsAllowInvalidHostnames=true
 
-# Automated Backup Infrastructure
-BACKUP_EMAIL_RECIPIENT=admin_email@gmail.com
-BACKUP_DIR=/path/to/backup/folder
+# ── 📧 AUTOMATED MAIL SERVICE CONFIG (SMTP) ──
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your_system_automation_email@gmail.com
+spring.mail.password=your_google_app_specific_password
 
-# Security Core
-JWT_SECRET=your_super_secret_high_entropy_key_here
+# ── 💾 ENHANCED BACKUP INFRASTRUCTURE ──
+backup.email.recipient=admin_audit_mailbox@gmail.com
+backup.dir=D:/Java-Workspace/pharmacy-erp/Backups
+
+# ── 🔑 JWT SECURITY GATEWAY VALIDATION ──
+jwt.secret=your_super_secret_high_entropy_256_bit_signing_key_here
+jwt.expiration-ms=86400000
