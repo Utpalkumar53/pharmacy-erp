@@ -27,3 +27,22 @@ The system accounts for three distinct revenue streams to ensure the bank balanc
 1. Clone the repository: `git clone [your-link]`
 2. Ensure MongoDB is running on `localhost:27017`.
 3. Run the application: `./mvnw spring-boot:run`
+
+## ⚙️ Environment Configuration
+
+The application requires specific environment variables to handle security and automated systems. 
+
+### 1. Backend Setup (`.env` or Application Properties)
+Create a `.env` file in the root backend directory, or supply these environment variables:
+
+```properties
+# Mail Service (SMTP)
+MAIL_USERNAME=your_gmail@gmail.com
+MAIL_PASSWORD=your_app_specific_password
+
+# Automated Backup Infrastructure
+BACKUP_EMAIL_RECIPIENT=admin_email@gmail.com
+BACKUP_DIR=/path/to/backup/folder
+
+# Security Core
+JWT_SECRET=your_super_secret_high_entropy_key_here
